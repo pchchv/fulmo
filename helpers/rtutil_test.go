@@ -2,6 +2,7 @@ package helpers
 
 import (
 	crand "crypto/rand"
+	"hash/fnv"
 	"testing"
 )
 
@@ -15,6 +16,25 @@ func BenchmarkMemHash(b *testing.B) {
 	}
 
 	b.SetBytes(int64(len(buf)))
+}
+
+func BenchmarkSip(b *testing.B) {
+	buf := make([]byte, 64)
+	crand.Read(buf)
+	for i := 0; i < b.N; i++ {
+		SipHash(buf)
+	}
+}
+
+func BenchmarkFnv(b *testing.B) {
+	buf := make([]byte, 64)
+	crand.Read(buf)
+	f := fnv.New64a()
+	for i := 0; i < b.N; i++ {
+		f.Write(buf)
+		f.Sum64()
+		f.Reset()
+	}
 }
 
 func benchmarkRand(b *testing.B, fab func() func() uint32) {
