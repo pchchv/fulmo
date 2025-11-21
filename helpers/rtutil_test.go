@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/dgryski/go-farm"
 )
 
 func BenchmarkMemHash(b *testing.B) {
@@ -51,6 +53,20 @@ func BenchmarkFnv(b *testing.B) {
 		f.Sum64()
 		f.Reset()
 	}
+}
+
+func BenchmarkFarm(b *testing.B) {
+	buf := make([]byte, 64)
+	crand.Read(buf)
+	for i := 0; i < b.N; i++ {
+		farm.Fingerprint64(buf)
+	}
+}
+
+func BenchmarkFastRand(b *testing.B) {
+	benchmarkRand(b, func() func() uint32 {
+		return FastRand
+	})
 }
 
 func BenchmarkRandSource(b *testing.B) {
