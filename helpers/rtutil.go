@@ -29,3 +29,6 @@ func MemHashString(str string) uint64 {
 //go:noescape
 //go:linkname memhash runtime.memhash
 func memhash(p unsafe.Pointer, h, s uintptr) uintptr
+
+//go:linkname memclrNoHeapPointers runtime.memclrNoHeapPointers
+func memclrNoHeapPointers(p unsafe.Pointer, n uintptr)
