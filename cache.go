@@ -20,3 +20,6 @@ type Item[V any] struct {
 }
 
 type itemFlag byte
+
+type metricType int
+
