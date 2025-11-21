@@ -3,7 +3,10 @@ package helpers
 import (
 	crand "crypto/rand"
 	"hash/fnv"
+	mrand "math/rand"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func BenchmarkMemHash(b *testing.B) {
@@ -35,6 +38,26 @@ func BenchmarkFnv(b *testing.B) {
 		f.Sum64()
 		f.Reset()
 	}
+}
+
+func BenchmarkRandSource(b *testing.B) {
+	benchmarkRand(b, func() func() uint32 {
+		s := mrand.New(mrand.NewSource(time.Now().Unix()))
+		return func() uint32 { return s.Uint32() }
+	})
+}
+
+func BenchmarkRandGlobal(b *testing.B) {
+	benchmarkRand(b, func() func() uint32 {
+		return func() uint32 { return mrand.Uint32() }
+	})
+}
+
+func BenchmarkRandAtomic(b *testing.B) {
+	var x uint32
+	benchmarkRand(b, func() func() uint32 {
+		return func() uint32 { return atomic.AddUint32(&x, 1) }
+	})
 }
 
 func benchmarkRand(b *testing.B, fab func() func() uint32) {
