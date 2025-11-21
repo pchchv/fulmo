@@ -7,6 +7,11 @@ type stringStruct struct {
 	len int
 }
 
+// FastRand is a fast thread local random function.
+//
+//go:linkname FastRand runtime.fastrand
+func FastRand() uint32
+
 // MemHash is the hash function used by go map,
 // it utilizes available hardware instructions(behaves as aeshash if aes instruction is available).
 // NOTE: The hash seed changes for every process.
