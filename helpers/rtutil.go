@@ -26,6 +26,15 @@ func MemHashString(str string) uint64 {
 	return uint64(memhash(ss.str, 0, uintptr(ss.len)))
 }
 
+func Memclr(b []byte) {
+	if len(b) == 0 {
+		return
+	}
+
+	p := unsafe.Pointer(&b[0])
+	memclrNoHeapPointers(p, uintptr(len(b)))
+}
+
 //go:noescape
 //go:linkname memhash runtime.memhash
 func memhash(p unsafe.Pointer, h, s uintptr) uintptr
