@@ -3,7 +3,10 @@ package helpers
 import (
 	"log"
 	"math"
+	"unsafe"
 )
+
+var mask = []uint8{1, 2, 4, 8, 16, 32, 64, 128}
 
 // Bloom filter.
 type Bloom struct {
@@ -51,6 +54,19 @@ func (bl *Bloom) TotalSize() int {
 	// bl struct has 5 members and each one is 8 byte
 	// bitset is a uint64 byte slice
 	return len(bl.bitset)*8 + 5*8
+}
+
+// Set sets the bit[idx] of bitset.
+func (bl *Bloom) Set(idx uint64) {
+	ptr := unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3))
+	*(*uint8)(ptr) |= mask[idx%8]
+}
+
+// IsSet checks if bit[idx] of bitset is set, returns true/false.
+func (bl *Bloom) IsSet(idx uint64) bool {
+	ptr := unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3))
+	r := ((*(*uint8)(ptr)) >> (idx % 8)) & 1
+	return r == 1
 }
 
 func calcSizeByWrongPositives(numEntries, wrongs float64) (uint64, uint64) {
