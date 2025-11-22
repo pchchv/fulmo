@@ -28,3 +28,17 @@ func calcSizeByWrongPositives(numEntries, wrongs float64) (uint64, uint64) {
 	size := -1 * numEntries * math.Log(wrongs) / math.Pow(float64(0.69314718056), 2)
 	return uint64(size), uint64(math.Ceil(float64(0.69314718056) * size / numEntries))
 }
+
+func getSize(ui64 uint64) (size uint64, exponent uint64) {
+	if ui64 < uint64(512) {
+		ui64 = uint64(512)
+	}
+
+	size = uint64(1)
+	for size < ui64 {
+		size <<= 1
+		exponent++
+	}
+
+	return
+}
