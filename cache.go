@@ -1,6 +1,10 @@
 package fulmo
 
-import "time"
+import (
+	"time"
+
+	"github.com/pchchv/fulmo/helpers"
+)
 
 const (
 	itemNew itemFlag = iota
@@ -31,6 +35,9 @@ type Item[V any] struct {
 	Expiration time.Time
 	wait       chan struct{}
 }
+
+// Key is the generic type to represent the keys type in key-value pair of the cache.
+type Key = helpers.Key
 
 type itemFlag byte
 
