@@ -24,3 +24,9 @@ func TestMain(m *testing.M) {
 
 	m.Run()
 }
+
+func Benchmark_New(b *testing.B) {
+	for r := 0; r < b.N; r++ {
+		_ = NewBloomFilter(float64(n*10), float64(7))
+	}
+}
