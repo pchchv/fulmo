@@ -1,6 +1,9 @@
 package helpers
 
-import "math"
+import (
+	"log"
+	"math"
+)
 
 // Bloom filter.
 type Bloom struct {
@@ -10,6 +13,32 @@ type Bloom struct {
 	size    uint64
 	setLocs uint64
 	shift   uint64
+}
+
+// NewBloomFilter returns a new bloomfilter.
+func NewBloomFilter(params ...float64) (bloomfilter *Bloom) {
+	var entries, locs uint64
+	if len(params) == 2 {
+		if params[1] < 1 {
+			entries, locs = calcSizeByWrongPositives(params[0], params[1])
+		} else {
+			entries, locs = uint64(params[0]), uint64(params[1])
+		}
+	} else {
+		log.Fatal("usage: New(float64(number_of_entries), float64(number_of_hashlocations))" +
+			" i.e. New(float64(1000), float64(3)) or New(float64(number_of_entries)," +
+			" float64(number_of_hashlocations)) i.e. New(float64(1000), float64(0.03))")
+	}
+
+	size, exponent := getSize(entries)
+	bloomfilter = &Bloom{
+		sizeExp: exponent,
+		size:    size - 1,
+		setLocs: locs,
+		shift:   64 - exponent,
+	}
+	bloomfilter.Size(size)
+	return bloomfilter
 }
 
 // Size makes Bloom filter with as bitset of size sz.
