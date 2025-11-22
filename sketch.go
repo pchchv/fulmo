@@ -1,6 +1,13 @@
 package fulmo
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+// cmDepth is the number of counter copies to store (think of it as rows).
+const cmDepth = 4
 
 // cmRow is a row of bytes, with each byte holding two counters.
 type cmRow []byte
@@ -45,6 +52,33 @@ func (r cmRow) increment(n uint64) {
 	if v < 15 {
 		r[i] += 1 << s
 	}
+}
+
+// cmSketch is a Count-Min sketch implementation with 4-bit counters,
+// heavily based on Damian Gryski's CM4.
+type cmSketch struct {
+	mask uint64
+	rows [cmDepth]cmRow
+	seed [cmDepth]uint64
+}
+
+func newCmSketch(numCounters int64) *cmSketch {
+	if numCounters == 0 {
+		panic("cmSketch: bad numCounters")
+	}
+
+	// get the next power of 2 for better cache performance
+	numCounters = next2Power(numCounters)
+	sketch := &cmSketch{mask: uint64(numCounters - 1)}
+	// initialize rows of counters and seeds
+	// cryptographic precision not needed
+	source := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
+	for i := 0; i < cmDepth; i++ {
+		sketch.seed[i] = source.Uint64()
+		sketch.rows[i] = newCmRow(numCounters)
+	}
+
+	return sketch
 }
 
 // next2Power rounds x up to the next power of 2,
