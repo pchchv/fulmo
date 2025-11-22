@@ -69,6 +69,26 @@ func (bl *Bloom) IsSet(idx uint64) bool {
 	return r == 1
 }
 
+// Clear resets the Bloom filter.
+func (bl *Bloom) Clear() {
+	for i := range bl.bitset {
+		bl.bitset[i] = 0
+	}
+}
+
+// Has checks if bit(s) for entry hash is/are set,
+// returns true if the hash was added to the Bloom Filter.
+func (bl Bloom) Has(hash uint64) bool {
+	h := hash >> bl.shift
+	l := hash << bl.shift >> bl.shift
+	for i := uint64(0); i < bl.setLocs; i++ {
+		if !bl.IsSet((h + i*l) & bl.size) {
+			return false
+		}
+	}
+	return true
+}
+
 func calcSizeByWrongPositives(numEntries, wrongs float64) (uint64, uint64) {
 	size := -1 * numEntries * math.Log(wrongs) / math.Pow(float64(0.69314718056), 2)
 	return uint64(size), uint64(math.Ceil(float64(0.69314718056) * size / numEntries))
