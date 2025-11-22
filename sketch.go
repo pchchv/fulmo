@@ -95,6 +95,22 @@ func (s *cmSketch) Reset() {
 	}
 }
 
+// Increment increments the count(ers) for the specified key.
+func (s *cmSketch) Increment(hashed uint64) {
+	for i := range s.rows {
+		s.rows[i].increment((hashed ^ s.seed[i]) & s.mask)
+	}
+}
+
+// Estimate returns the value of the specified key.
+func (s *cmSketch) Estimate(hashed uint64) int64 {
+	m := byte(255)
+	for i := range s.rows {
+		m = min(m, s.rows[i].get((hashed^s.seed[i])&s.mask))
+	}
+	return int64(m)
+}
+
 // next2Power rounds x up to the next power of 2,
 // if it's not already one.
 func next2Power(x int64) int64 {
