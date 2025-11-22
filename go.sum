@@ -1,0 +1,4 @@
+github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
+github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
+github.com/pchchv/fulmo/helpers v0.0.0-20251121182305-f0b9efd2e0c8 h1:wkag51CNvbmYVRiFDs14u2Do+s63F81IOk0pJP/wpt8=
+github.com/pchchv/fulmo/helpers v0.0.0-20251121182305-f0b9efd2e0c8/go.mod h1:3GSrL4R0QWhw5JPpyaHTLUQ1CFBkx8jtdk5hUWGwPcE=
