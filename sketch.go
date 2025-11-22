@@ -33,3 +33,16 @@ func (r cmRow) string() (s string) {
 	}
 	return s[:len(s)-1]
 }
+
+func (r cmRow) increment(n uint64) {
+	// index of the counter
+	i := n / 2
+	// shift distance (even 0, odd 4)
+	s := (n & 1) * 4
+	// counter value
+	v := (r[i] >> s) & 0x0f
+	// only increment if not max value (overflow wrap is bad for LFU)
+	if v < 15 {
+		r[i] += 1 << s
+	}
+}
