@@ -81,6 +81,20 @@ func newCmSketch(numCounters int64) *cmSketch {
 	return sketch
 }
 
+// Clear zeroes all counters.
+func (s *cmSketch) Clear() {
+	for _, r := range s.rows {
+		r.clear()
+	}
+}
+
+// Reset halves all counter values.
+func (s *cmSketch) Reset() {
+	for _, r := range s.rows {
+		r.reset()
+	}
+}
+
 // next2Power rounds x up to the next power of 2,
 // if it's not already one.
 func next2Power(x int64) int64 {
