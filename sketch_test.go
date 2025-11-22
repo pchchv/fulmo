@@ -1,6 +1,10 @@
 package fulmo
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestNext2Power(t *testing.T) {
 	sz := 12 << 30
@@ -10,6 +14,16 @@ func TestNext2Power(t *testing.T) {
 
 	pow := next2Power(val)
 	t.Logf("pow = %d. mult 4 = %d\n", pow, pow*4)
+}
+
+func TestSketch(t *testing.T) {
+	defer func() {
+		require.NotNil(t, recover())
+	}()
+
+	s := newCmSketch(5)
+	require.Equal(t, uint64(7), s.mask)
+	newCmSketch(0)
 }
 
 func BenchmarkSketchIncrement(b *testing.B) {
