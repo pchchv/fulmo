@@ -26,6 +26,28 @@ func TestSketch(t *testing.T) {
 	newCmSketch(0)
 }
 
+func TestSketchClear(t *testing.T) {
+	s := newCmSketch(16)
+	for i := 0; i < 16; i++ {
+		s.Increment(uint64(i))
+	}
+
+	s.Clear()
+	for i := 0; i < 16; i++ {
+		require.Equal(t, int64(0), s.Estimate(uint64(i)))
+	}
+}
+
+func TestSketchReset(t *testing.T) {
+	s := newCmSketch(16)
+	s.Increment(1)
+	s.Increment(1)
+	s.Increment(1)
+	s.Increment(1)
+	s.Reset()
+	require.Equal(t, int64(2), s.Estimate(1))
+}
+
 func BenchmarkSketchIncrement(b *testing.B) {
 	b.SetBytes(1)
 	s := newCmSketch(16)
