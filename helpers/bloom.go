@@ -1,5 +1,7 @@
 package helpers
 
+import "math"
+
 // Bloom filter.
 type Bloom struct {
 	bitset  []uint64
@@ -20,4 +22,9 @@ func (bl *Bloom) TotalSize() int {
 	// bl struct has 5 members and each one is 8 byte
 	// bitset is a uint64 byte slice
 	return len(bl.bitset)*8 + 5*8
+}
+
+func calcSizeByWrongPositives(numEntries, wrongs float64) (uint64, uint64) {
+	size := -1 * numEntries * math.Log(wrongs) / math.Pow(float64(0.69314718056), 2)
+	return uint64(size), uint64(math.Ceil(float64(0.69314718056) * size / numEntries))
 }
