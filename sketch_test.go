@@ -48,6 +48,27 @@ func TestSketchReset(t *testing.T) {
 	require.Equal(t, int64(2), s.Estimate(1))
 }
 
+func TestSketchIncrement(t *testing.T) {
+	s := newCmSketch(16)
+	s.Increment(1)
+	s.Increment(5)
+	s.Increment(9)
+	for i := 0; i < cmDepth; i++ {
+		if s.rows[i].string() != s.rows[0].string() {
+			break
+		}
+		require.False(t, i == cmDepth-1, "identical rows, bad seeding")
+	}
+}
+
+func TestSketchEstimate(t *testing.T) {
+	s := newCmSketch(16)
+	s.Increment(1)
+	s.Increment(1)
+	require.Equal(t, int64(2), s.Estimate(1))
+	require.Equal(t, int64(0), s.Estimate(0))
+}
+
 func BenchmarkSketchIncrement(b *testing.B) {
 	b.SetBytes(1)
 	s := newCmSketch(16)
