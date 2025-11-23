@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -39,6 +41,32 @@ func Test_NumberOfWrongs(t *testing.T) {
 	//nolint:lll
 	fmt.Printf("Bloomfilter New(7* 2**16, 7) (-> size=%v bit): \n            Check for 'false positives': %v wrong positive 'Has' results on 2**16 entries => %v %%\n", len(bf.bitset)<<6, cnt, float64(cnt)/float64(n))
 
+}
+
+func Test_JSON(t *testing.T) {
+	const shallBe = int(1 << 16)
+	var cnt int
+	bf = NewBloomFilter(float64(n*10), float64(7))
+	for i := range wordlist1 {
+		hash := MemHash(wordlist1[i])
+		if !bf.AddIfNotHas(hash) {
+			cnt++
+		}
+	}
+
+	var cnt2 int
+	Json := bf.JSONMarshal()
+	// create new bloomfilter from bloomfilter's JSON representation
+	bf2, err := JSONUnmarshal(Json)
+	require.NoError(t, err)
+	for i := range wordlist1 {
+		hash := MemHash(wordlist1[i])
+		if !bf2.AddIfNotHas(hash) {
+			cnt2++
+		}
+	}
+
+	require.Equal(t, shallBe, cnt2)
 }
 
 func Benchmark_New(b *testing.B) {
