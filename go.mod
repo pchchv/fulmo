@@ -3,7 +3,7 @@ module github.com/pchchv/fulmo
 go 1.25.4
 
 require (
-	github.com/pchchv/fulmo/helpers v0.0.0-20251122202738-b8a18c82febb
+	github.com/pchchv/fulmo/helpers v0.0.0-20251123023353-76555622dd2d
 	github.com/stretchr/testify v1.11.1
 )
 
