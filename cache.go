@@ -105,6 +105,21 @@ func (p *Metrics) Misses() uint64 {
 	return p.get(miss)
 }
 
+// KeysAdded is the total number of Set calls where a new key-value item was added.
+func (p *Metrics) KeysAdded() uint64 {
+	return p.get(keyAdd)
+}
+
+// KeysUpdated is the total number of Set calls where the value was updated.
+func (p *Metrics) KeysUpdated() uint64 {
+	return p.get(keyUpdate)
+}
+
+// KeysEvicted is the total number of keys evicted.
+func (p *Metrics) KeysEvicted() uint64 {
+	return p.get(keyEvict)
+}
+
 func (p *Metrics) add(t metricType, hash, delta uint64) {
 	if p == nil {
 		return
