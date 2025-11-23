@@ -21,6 +21,27 @@ func newTinyLFU(numCounters int64) *tinyLFU {
 	}
 }
 
+func (p *tinyLFU) Estimate(key uint64) int64 {
+	hits := p.freq.Estimate(key)
+	if p.door.Has(key) {
+		hits++
+	}
+	return hits
+}
+
+func (p *tinyLFU) Increment(key uint64) {
+	// flip doorkeeper bit if not already done
+	if added := p.door.AddIfNotHas(key); !added {
+		// increment count-min counter if doorkeeper bit is already set
+		p.freq.Increment(key)
+	}
+
+	p.incrs++
+	if p.incrs >= p.resetAt {
+		p.reset()
+	}
+}
+
 func (p *tinyLFU) clear() {
 	p.incrs = 0
 	p.door.Clear()
