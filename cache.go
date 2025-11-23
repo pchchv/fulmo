@@ -95,6 +95,16 @@ func newMetrics() (s *Metrics) {
 	return
 }
 
+// Hits is the number of Get calls where a value was found for the corresponding key.
+func (p *Metrics) Hits() uint64 {
+	return p.get(hit)
+}
+
+// Misses is the number of Get calls where a value was not found for the corresponding key.
+func (p *Metrics) Misses() uint64 {
+	return p.get(miss)
+}
+
 func (p *Metrics) add(t metricType, hash, delta uint64) {
 	if p == nil {
 		return
