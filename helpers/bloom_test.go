@@ -56,3 +56,27 @@ func Benchmark_Has(b *testing.B) {
 		}
 	}
 }
+
+func Benchmark_Clear(b *testing.B) {
+	bf = NewBloomFilter(float64(n*10), float64(7))
+	for i := range wordlist1 {
+		hash := MemHash(wordlist1[i])
+		bf.Add(hash)
+	}
+
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
+		bf.Clear()
+	}
+}
+
+func Benchmark_Add(b *testing.B) {
+	bf = NewBloomFilter(float64(n*10), float64(7))
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
+		for i := range wordlist1 {
+			hash := MemHash(wordlist1[i])
+			bf.Add(hash)
+		}
+	}
+}
