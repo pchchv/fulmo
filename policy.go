@@ -42,6 +42,12 @@ func (p *tinyLFU) Increment(key uint64) {
 	}
 }
 
+func (p *tinyLFU) Push(keys []uint64) {
+	for _, key := range keys {
+		p.Increment(key)
+	}
+}
+
 func (p *tinyLFU) clear() {
 	p.incrs = 0
 	p.door.Clear()
