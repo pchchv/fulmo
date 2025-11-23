@@ -20,3 +20,18 @@ func newTinyLFU(numCounters int64) *tinyLFU {
 		resetAt: numCounters,
 	}
 }
+
+func (p *tinyLFU) clear() {
+	p.incrs = 0
+	p.door.Clear()
+	p.freq.Clear()
+}
+
+func (p *tinyLFU) reset() {
+	// zero out incrs
+	p.incrs = 0
+	// clears doorkeeper bits
+	p.door.Clear()
+	// halves count-min counters
+	p.freq.Reset()
+}
