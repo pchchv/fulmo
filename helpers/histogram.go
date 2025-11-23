@@ -171,3 +171,12 @@ func (histogram *HistogramData) String() string {
 	b.WriteString(" --\n")
 	return b.String()
 }
+
+// Creates bounds for an histogram.
+// The bounds are powers of two of the form [2^min_exponent, ..., 2^max_exponent].
+func HistogramBounds(minExponent, maxExponent uint32) (bounds []float64) {
+	for i := minExponent; i <= maxExponent; i++ {
+		bounds = append(bounds, float64(int(1)<<i))
+	}
+	return
+}
