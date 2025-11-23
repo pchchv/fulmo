@@ -44,6 +44,16 @@ func NewBloomFilter(params ...float64) (bloomfilter *Bloom) {
 	return bloomfilter
 }
 
+// NewWithBoolset takes a []byte slice and number of locs per entry,
+// returns the bloomfilter with a bitset populated according to the input []byte.
+func newWithBoolset(bs *[]byte, locs uint64) *Bloom {
+	bloomfilter := NewBloomFilter(float64(len(*bs)<<3), float64(locs))
+	for i, b := range *bs {
+		*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&bloomfilter.bitset[0])) + uintptr(i))) = b
+	}
+	return bloomfilter
+}
+
 // Size makes Bloom filter with as bitset of size sz.
 func (bl *Bloom) Size(sz uint64) {
 	bl.bitset = make([]uint64, sz>>6)
