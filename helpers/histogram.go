@@ -1,6 +1,12 @@
 package helpers
 
-import "math"
+import (
+	"fmt"
+	"math"
+	"strings"
+
+	"github.com/dustin/go-humanize"
+)
 
 // HistogramData stores the information needed to represent
 // the sizes of the keys and values as a histogram.
@@ -115,4 +121,53 @@ func (histogram *HistogramData) Percentile(p float64) float64 {
 
 	// default return should be the max range
 	return histogram.Bounds[len(histogram.Bounds)-1]
+}
+
+// String converts the histogram data into human-readable string.
+func (histogram *HistogramData) String() string {
+	if histogram == nil {
+		return ""
+	}
+
+	var cum float64
+	var b strings.Builder
+	b.WriteString("\n -- Histogram: \n")
+	b.WriteString(fmt.Sprintf("Min value: %d \n", histogram.Min))
+	b.WriteString(fmt.Sprintf("Max value: %d \n", histogram.Max))
+	b.WriteString(fmt.Sprintf("Count: %d \n", histogram.Count))
+	b.WriteString(fmt.Sprintf("50p: %.2f \n", histogram.Percentile(0.5)))
+	b.WriteString(fmt.Sprintf("75p: %.2f \n", histogram.Percentile(0.75)))
+	b.WriteString(fmt.Sprintf("90p: %.2f \n", histogram.Percentile(0.90)))
+	numBounds := len(histogram.Bounds)
+	for index, count := range histogram.CountPerBucket {
+		if count == 0 {
+			continue
+		}
+
+		// the last bucket represents the bucket that contains the range from
+		// the last bound up to infinity so it's processed differently
+		// than the other buckets
+		if index == len(histogram.CountPerBucket)-1 {
+			lowerBound := uint64(histogram.Bounds[numBounds-1])
+			page := float64(count*100) / float64(histogram.Count)
+			cum += page
+			b.WriteString(fmt.Sprintf("[%s, %s) %d %.2f%% %.2f%%\n",
+				humanize.IBytes(lowerBound), "infinity", count, page, cum))
+			continue
+		}
+
+		var lowerBound uint64
+		if index > 0 {
+			lowerBound = uint64(histogram.Bounds[index-1])
+		}
+
+		upperBound := uint64(histogram.Bounds[index])
+		page := float64(count*100) / float64(histogram.Count)
+		cum += page
+		b.WriteString(fmt.Sprintf("[%d, %d) %d %.2f%% %.2f%%\n",
+			lowerBound, upperBound, count, page, cum))
+	}
+
+	b.WriteString(" --\n")
+	return b.String()
 }
