@@ -51,3 +51,41 @@ func (histogram *HistogramData) Copy() *HistogramData {
 		Sum:            histogram.Sum,
 	}
 }
+
+// Mean returns the mean value for the histogram.
+func (histogram *HistogramData) Mean() float64 {
+	if histogram.Count == 0 {
+		return 0
+	}
+	return float64(histogram.Sum) / float64(histogram.Count)
+}
+
+// Update changes the Min and Max fields if value is less than or greater than the current values.
+func (histogram *HistogramData) Update(value int64) {
+	if histogram == nil {
+		return
+	}
+
+	if value > histogram.Max {
+		histogram.Max = value
+	}
+
+	if value < histogram.Min {
+		histogram.Min = value
+	}
+
+	histogram.Sum += value
+	histogram.Count++
+	for index := 0; index <= len(histogram.Bounds); index++ {
+		// allocate value in the last buckets if the end of the Bounds array has been reached
+		if index == len(histogram.Bounds) {
+			histogram.CountPerBucket[index]++
+			break
+		}
+
+		if value < int64(histogram.Bounds[index]) {
+			histogram.CountPerBucket[index]++
+			break
+		}
+	}
+}
