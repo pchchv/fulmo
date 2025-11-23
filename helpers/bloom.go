@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"bytes"
 	"encoding/json"
 	"log"
 	"math"
@@ -165,4 +166,18 @@ func getSize(ui64 uint64) (size uint64, exponent uint64) {
 	}
 
 	return
+}
+
+// JSONUnmarshal takes JSON-Object (bloomJSONImExport)
+// as []bytes returns bloom32 / bloom64 object.
+func JSONUnmarshal(dbData []byte) (bl *Bloom, err error) {
+	bloomImEx := bloomJSONImExport{}
+	if err = json.Unmarshal(dbData, &bloomImEx); err != nil {
+		return
+	}
+
+	buf := bytes.NewBuffer(bloomImEx.FilterSet)
+	bs := buf.Bytes()
+	bl = newWithBoolset(&bs, bloomImEx.SetLocs)
+	return bl, nil
 }
