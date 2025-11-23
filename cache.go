@@ -1,6 +1,7 @@
 package fulmo
 
 import (
+	"sync"
 	"time"
 
 	"github.com/pchchv/fulmo/helpers"
@@ -70,4 +71,25 @@ func stringFor(t metricType) string {
 	default:
 		return "unidentified"
 	}
+}
+
+// Metrics is a snapshot of performance statistics for the lifetime of a cache instance.
+type Metrics struct {
+	mu   sync.RWMutex
+	all  [doNotUse][]*uint64
+	life *helpers.HistogramData // tracks the life expectancy of a key
+}
+
+func newMetrics() (s *Metrics) {
+	s = &Metrics{
+		life: helpers.NewHistogramData(helpers.HistogramBounds(1, 16)),
+	}
+	for i := 0; i < doNotUse; i++ {
+		s.all[i] = make([]*uint64, 256)
+		slice := s.all[i]
+		for j := range slice {
+			slice[j] = new(uint64)
+		}
+	}
+	return
 }
