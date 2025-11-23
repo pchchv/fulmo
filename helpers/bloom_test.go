@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	bf        *Bloom
 	wordlist1 [][]byte
 	n         = 1 << 16
 )
@@ -28,5 +29,15 @@ func TestMain(m *testing.M) {
 func Benchmark_New(b *testing.B) {
 	for r := 0; r < b.N; r++ {
 		_ = NewBloomFilter(float64(n*10), float64(7))
+	}
+}
+
+func Benchmark_Has(b *testing.B) {
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
+		for i := range wordlist1 {
+			hash := MemHash(wordlist1[i])
+			bf.Has(hash)
+		}
 	}
 }
