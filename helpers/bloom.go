@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"encoding/json"
 	"log"
 	"math"
 	"unsafe"
@@ -52,6 +53,24 @@ func newWithBoolset(bs *[]byte, locs uint64) *Bloom {
 		*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&bloomfilter.bitset[0])) + uintptr(i))) = b
 	}
 	return bloomfilter
+}
+
+// JSONMarshal returns JSON-object (type bloomJSONImExport) as []byte.
+func (bl Bloom) JSONMarshal() []byte {
+	bloomImEx := bloomJSONImExport{}
+	bloomImEx.SetLocs = bl.setLocs
+	bloomImEx.FilterSet = make([]byte, len(bl.bitset)<<3)
+	for i := range bloomImEx.FilterSet {
+		bloomImEx.FilterSet[i] = *(*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[0])) +
+			uintptr(i)))
+	}
+
+	data, err := json.Marshal(bloomImEx)
+	if err != nil {
+		log.Fatal("json.Marshal failed: ", err)
+	}
+
+	return data
 }
 
 // Size makes Bloom filter with as bitset of size sz.
