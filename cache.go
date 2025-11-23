@@ -2,6 +2,7 @@ package fulmo
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pchchv/fulmo/helpers"
@@ -92,4 +93,30 @@ func newMetrics() (s *Metrics) {
 		}
 	}
 	return
+}
+
+func (p *Metrics) add(t metricType, hash, delta uint64) {
+	if p == nil {
+		return
+	}
+
+	valp := p.all[t]
+	// avoid false sharing by padding at least 64 bytes of
+	// space between two atomic counters which would be incremented
+	idx := (hash % 25) * 10
+	atomic.AddUint64(valp[idx], delta)
+}
+
+func (p *Metrics) get(t metricType) uint64 {
+	if p == nil {
+		return 0
+	}
+
+	var total uint64
+	valp := p.all[t]
+	for i := range valp {
+		total += atomic.LoadUint64(valp[i])
+	}
+
+	return total
 }
