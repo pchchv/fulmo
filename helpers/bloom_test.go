@@ -26,6 +26,21 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+func Test_NumberOfWrongs(t *testing.T) {
+	var cnt int
+	bf = NewBloomFilter(float64(n*10), float64(7))
+	for i := range wordlist1 {
+		hash := MemHash(wordlist1[i])
+		if !bf.AddIfNotHas(hash) {
+			cnt++
+		}
+	}
+
+	//nolint:lll
+	fmt.Printf("Bloomfilter New(7* 2**16, 7) (-> size=%v bit): \n            Check for 'false positives': %v wrong positive 'Has' results on 2**16 entries => %v %%\n", len(bf.bitset)<<6, cnt, float64(cnt)/float64(n))
+
+}
+
 func Benchmark_New(b *testing.B) {
 	for r := 0; r < b.N; r++ {
 		_ = NewBloomFilter(float64(n*10), float64(7))
