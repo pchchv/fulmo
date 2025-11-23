@@ -122,6 +122,13 @@ func (bl *Bloom) AddIfNotHas(hash uint64) bool {
 	return true
 }
 
+// bloomJSONImExport
+// Im/Export structure used by JSONMarshal / JSONUnmarshal.
+type bloomJSONImExport struct {
+	FilterSet []byte
+	SetLocs   uint64
+}
+
 func calcSizeByWrongPositives(numEntries, wrongs float64) (uint64, uint64) {
 	size := -1 * numEntries * math.Log(wrongs) / math.Pow(float64(0.69314718056), 2)
 	return uint64(size), uint64(math.Ceil(float64(0.69314718056) * size / numEntries))
