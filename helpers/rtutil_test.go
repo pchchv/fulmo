@@ -95,6 +95,12 @@ func BenchmarkCPUTicks(b *testing.B) {
 	}
 }
 
+func BenchmarkNanoTime(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		NanoTime()
+	}
+}
+
 func benchmarkRand(b *testing.B, fab func() func() uint32) {
 	b.RunParallel(func(pb *testing.PB) {
 		gen := fab()
