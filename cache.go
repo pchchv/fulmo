@@ -239,3 +239,13 @@ func (p *Metrics) get(t metricType) uint64 {
 
 	return total
 }
+
+func (p *Metrics) trackEviction(numSeconds int64) {
+	if p == nil {
+		return
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.life.Update(numSeconds)
+}
