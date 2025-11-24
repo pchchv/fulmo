@@ -89,6 +89,12 @@ func BenchmarkRandAtomic(b *testing.B) {
 	})
 }
 
+func BenchmarkCPUTicks(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		CPUTicks()
+	}
+}
+
 func benchmarkRand(b *testing.B, fab func() func() uint32) {
 	b.RunParallel(func(pb *testing.PB) {
 		gen := fab()
