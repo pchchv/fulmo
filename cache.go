@@ -142,6 +142,17 @@ func (p *Metrics) GetsKept() uint64 {
 	return p.get(keepGets)
 }
 
+// CostAdded is the sum of costs that have been added
+// (successful Set calls).
+func (p *Metrics) CostAdded() uint64 {
+	return p.get(costAdd)
+}
+
+// CostEvicted is the sum of all costs that have been evicted.
+func (p *Metrics) CostEvicted() uint64 {
+	return p.get(costEvict)
+}
+
 func (p *Metrics) add(t metricType, hash, delta uint64) {
 	if p == nil {
 		return
