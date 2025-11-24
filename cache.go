@@ -132,6 +132,16 @@ func (p *Metrics) SetsRejected() uint64 {
 	return p.get(rejectSets)
 }
 
+// GetsDropped is the number of Get counter increments that are dropped internally.
+func (p *Metrics) GetsDropped() uint64 {
+	return p.get(dropGets)
+}
+
+// GetsKept is the number of Get counter increments that are kept.
+func (p *Metrics) GetsKept() uint64 {
+	return p.get(keepGets)
+}
+
 func (p *Metrics) add(t metricType, hash, delta uint64) {
 	if p == nil {
 		return
