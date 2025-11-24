@@ -45,6 +45,11 @@ func Memclr(b []byte) {
 //go:linkname CPUTicks runtime.cputicks
 func CPUTicks() int64
 
+// NanoTime returns the current time in nanoseconds from a monotonic clock.
+//
+//go:linkname NanoTime runtime.nanotime
+func NanoTime() int64
+
 //go:noescape
 //go:linkname memhash runtime.memhash
 func memhash(p unsafe.Pointer, h, s uintptr) uintptr
