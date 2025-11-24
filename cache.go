@@ -1,6 +1,8 @@
 package fulmo
 
 import (
+	"bytes"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -151,6 +153,38 @@ func (p *Metrics) CostAdded() uint64 {
 // CostEvicted is the sum of all costs that have been evicted.
 func (p *Metrics) CostEvicted() uint64 {
 	return p.get(costEvict)
+}
+
+// Ratio is the number of Hits over all accesses (Hits + Misses).
+// This is the percentage of successful Get calls.
+func (p *Metrics) Ratio() float64 {
+	if p == nil {
+		return 0.0
+	}
+
+	hits, misses := p.get(hit), p.get(miss)
+	if hits == 0 && misses == 0 {
+		return 0.0
+	}
+
+	return float64(hits) / float64(hits+misses)
+}
+
+// String returns a string representation of the metrics.
+func (p *Metrics) String() string {
+	if p == nil {
+		return ""
+	}
+
+	var buf bytes.Buffer
+	for i := 0; i < doNotUse; i++ {
+		t := metricType(i)
+		fmt.Fprintf(&buf, "%s: %d ", stringFor(t), p.get(t))
+	}
+
+	fmt.Fprintf(&buf, "gets-total: %d ", p.get(hit)+p.get(miss))
+	fmt.Fprintf(&buf, "hit-ratio: %.2f", p.Ratio())
+	return buf.String()
 }
 
 func (p *Metrics) add(t metricType, hash, delta uint64) {
