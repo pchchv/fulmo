@@ -40,6 +40,11 @@ func Memclr(b []byte) {
 	memclrNoHeapPointers(p, uintptr(len(b)))
 }
 
+// CPUTicks is a faster alternative to NanoTime to measure time duration.
+//
+//go:linkname CPUTicks runtime.cputicks
+func CPUTicks() int64
+
 //go:noescape
 //go:linkname memhash runtime.memhash
 func memhash(p unsafe.Pointer, h, s uintptr) uintptr
