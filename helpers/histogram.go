@@ -180,3 +180,14 @@ func HistogramBounds(minExponent, maxExponent uint32) (bounds []float64) {
 	}
 	return
 }
+
+func Fibonacci(num int) []float64 {
+	assert(num > 4)
+	bounds := make([]float64, num)
+	bounds[0] = 1
+	bounds[1] = 2
+	for i := 2; i < num; i++ {
+		bounds[i] = bounds[i-1] + bounds[i-2]
+	}
+	return bounds
+}
