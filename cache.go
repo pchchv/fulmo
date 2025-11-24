@@ -120,6 +120,18 @@ func (p *Metrics) KeysEvicted() uint64 {
 	return p.get(keyEvict)
 }
 
+// SetsDropped is the number of Set calls that
+// don't make it into internal buffers
+// (due to contention or some other reason).
+func (p *Metrics) SetsDropped() uint64 {
+	return p.get(dropSets)
+}
+
+// SetsRejected is the number of Set calls rejected by the policy (TinyLFU).
+func (p *Metrics) SetsRejected() uint64 {
+	return p.get(rejectSets)
+}
+
 func (p *Metrics) add(t metricType, hash, delta uint64) {
 	if p == nil {
 		return
