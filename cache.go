@@ -187,6 +187,33 @@ func (p *Metrics) String() string {
 	return buf.String()
 }
 
+// Clear resets all the metrics.
+func (p *Metrics) Clear() {
+	if p == nil {
+		return
+	}
+
+	for i := 0; i < doNotUse; i++ {
+		for j := range p.all[i] {
+			atomic.StoreUint64(p.all[i][j], 0)
+		}
+	}
+
+	p.mu.Lock()
+	p.life = helpers.NewHistogramData(helpers.HistogramBounds(1, 16))
+	p.mu.Unlock()
+}
+
+func (p *Metrics) LifeExpectancySeconds() *helpers.HistogramData {
+	if p == nil {
+		return nil
+	}
+
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.life.Copy()
+}
+
 func (p *Metrics) add(t metricType, hash, delta uint64) {
 	if p == nil {
 		return
