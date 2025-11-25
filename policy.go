@@ -27,6 +27,34 @@ type defaultPolicy[V any] struct {
 	itemsCh  chan []uint64
 }
 
+func (p *defaultPolicy[V]) Close() {
+	if p.isClosed {
+		return
+	}
+
+	// block until the p.processItems goroutine returns
+	p.stop <- struct{}{}
+	<-p.done
+	close(p.stop)
+	close(p.done)
+	close(p.itemsCh)
+	p.isClosed = true
+}
+
+func (p *defaultPolicy[V]) processItems() {
+	for {
+		select {
+		case items := <-p.itemsCh:
+			p.Lock()
+			p.admit.Push(items)
+			p.Unlock()
+		case <-p.stop:
+			p.done <- struct{}{}
+			return
+		}
+	}
+}
+
 // tinyLFU is an admission helper that tracks
 // access frequency using tiny (4-bit) counters in
 // the form of a count-min sketch.
