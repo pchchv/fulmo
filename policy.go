@@ -84,3 +84,22 @@ func newSampledLFU(maxCost int64) *sampledLFU {
 		keyCosts: make(map[uint64]int64),
 	}
 }
+
+func (p *sampledLFU) add(key uint64, cost int64) {
+	p.keyCosts[key] = cost
+	p.used += cost
+}
+
+func (p *sampledLFU) clear() {
+	p.used = 0
+	p.keyCosts = make(map[uint64]int64)
+}
+
+func (p *sampledLFU) del(key uint64) {
+	if cost, ok := p.keyCosts[key]; ok {
+		p.used -= cost
+		delete(p.keyCosts, key)
+		p.metrics.add(costEvict, key, uint64(cost))
+		p.metrics.add(keyEvict, key, 1)
+	}
+}
