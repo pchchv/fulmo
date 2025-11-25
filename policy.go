@@ -58,6 +58,19 @@ func (p *defaultPolicy[V]) Close() {
 	p.isClosed = true
 }
 
+func (p *defaultPolicy[V]) Clear() {
+	p.Lock()
+	p.admit.clear()
+	p.evict.clear()
+	p.Unlock()
+}
+
+func (p *defaultPolicy[V]) Update(key uint64, cost int64) {
+	p.Lock()
+	p.evict.updateIfHas(key, cost)
+	p.Unlock()
+}
+
 func (p *defaultPolicy[V]) processItems() {
 	for {
 		select {
