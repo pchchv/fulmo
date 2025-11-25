@@ -27,6 +27,19 @@ type defaultPolicy[V any] struct {
 	itemsCh  chan []uint64
 }
 
+func newDefaultPolicy[V any](numCounters, maxCost int64) *defaultPolicy[V] {
+	p := &defaultPolicy[V]{
+		admit:   newTinyLFU(numCounters),
+		evict:   newSampledLFU(maxCost),
+		itemsCh: make(chan []uint64, 3),
+		stop:    make(chan struct{}),
+		done:    make(chan struct{}),
+	}
+
+	go p.processItems()
+	return p
+}
+
 func (p *defaultPolicy[V]) Close() {
 	if p.isClosed {
 		return
