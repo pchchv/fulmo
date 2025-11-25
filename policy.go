@@ -16,6 +16,10 @@ type policyPair struct {
 	cost int64
 }
 
+func newPolicy[V any](numCounters, maxCost int64) *defaultPolicy[V] {
+	return newDefaultPolicy[V](numCounters, maxCost)
+}
+
 type defaultPolicy[V any] struct {
 	sync.Mutex
 	isClosed bool
