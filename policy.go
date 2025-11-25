@@ -1,6 +1,7 @@
 package fulmo
 
 import (
+	"sync"
 	"sync/atomic"
 
 	"github.com/pchchv/fulmo/helpers"
@@ -13,6 +14,17 @@ const lfuSample = 5
 type policyPair struct {
 	key  uint64
 	cost int64
+}
+
+type defaultPolicy[V any] struct {
+	sync.Mutex
+	isClosed bool
+	metrics  *Metrics
+	admit    *tinyLFU
+	evict    *sampledLFU
+	stop     chan struct{}
+	done     chan struct{}
+	itemsCh  chan []uint64
 }
 
 // tinyLFU is an admission helper that tracks
