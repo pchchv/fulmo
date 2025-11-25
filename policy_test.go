@@ -44,3 +44,10 @@ func TestTinyLFUClear(t *testing.T) {
 	require.Equal(t, int64(0), a.incrs)
 	require.Equal(t, int64(0), a.Estimate(3))
 }
+
+func TestPolicy(t *testing.T) {
+	defer func() {
+		require.Nil(t, recover())
+	}()
+	newPolicy[int](100, 10)
+}
