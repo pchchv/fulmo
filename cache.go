@@ -47,35 +47,6 @@ type itemFlag byte
 
 type metricType int
 
-func stringFor(t metricType) string {
-	switch t {
-	case hit:
-		return "hit"
-	case miss:
-		return "miss"
-	case keyAdd:
-		return "keys-added"
-	case keyUpdate:
-		return "keys-updated"
-	case keyEvict:
-		return "keys-evicted"
-	case costAdd:
-		return "cost-added"
-	case costEvict:
-		return "cost-evicted"
-	case dropSets:
-		return "sets-dropped"
-	case rejectSets:
-		return "sets-rejected" // by policy.
-	case dropGets:
-		return "gets-dropped"
-	case keepGets:
-		return "gets-kept"
-	default:
-		return "unidentified"
-	}
-}
-
 // Metrics is a snapshot of performance statistics for the lifetime of a cache instance.
 type Metrics struct {
 	mu   sync.RWMutex
@@ -248,4 +219,33 @@ func (p *Metrics) trackEviction(numSeconds int64) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.life.Update(numSeconds)
+}
+
+func stringFor(t metricType) string {
+	switch t {
+	case hit:
+		return "hit"
+	case miss:
+		return "miss"
+	case keyAdd:
+		return "keys-added"
+	case keyUpdate:
+		return "keys-updated"
+	case keyEvict:
+		return "keys-evicted"
+	case costAdd:
+		return "cost-added"
+	case costEvict:
+		return "cost-evicted"
+	case dropSets:
+		return "sets-dropped"
+	case rejectSets:
+		return "sets-rejected" // by policy.
+	case dropGets:
+		return "gets-dropped"
+	case keepGets:
+		return "gets-kept"
+	default:
+		return "unidentified"
+	}
 }
