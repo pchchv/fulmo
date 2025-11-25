@@ -6,6 +6,11 @@ import (
 	"github.com/pchchv/fulmo/helpers"
 )
 
+type policyPair struct {
+	key  uint64
+	cost int64
+}
+
 // tinyLFU is an admission helper that tracks
 // access frequency using tiny (4-bit) counters in
 // the form of a count-min sketch.
