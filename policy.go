@@ -1,6 +1,10 @@
 package fulmo
 
-import "github.com/pchchv/fulmo/helpers"
+import (
+	"sync/atomic"
+
+	"github.com/pchchv/fulmo/helpers"
+)
 
 // tinyLFU is an admission helper that tracks
 // access frequency using tiny (4-bit) counters in
@@ -102,4 +106,12 @@ func (p *sampledLFU) del(key uint64) {
 		p.metrics.add(costEvict, key, uint64(cost))
 		p.metrics.add(keyEvict, key, 1)
 	}
+}
+
+func (p *sampledLFU) getMaxCost() int64 {
+	return atomic.LoadInt64(&p.maxCost)
+}
+
+func (p *sampledLFU) updateMaxCost(maxCost int64) {
+	atomic.StoreInt64(&p.maxCost, maxCost)
 }
