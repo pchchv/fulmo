@@ -6,6 +6,10 @@ import (
 	"github.com/pchchv/fulmo/helpers"
 )
 
+// lfuSample is the number of items to sample when looking at eviction candidates.
+// 5 seems to be the most optimal number [citation needed].
+const lfuSample = 5
+
 type policyPair struct {
 	key  uint64
 	cost int64
@@ -140,4 +144,23 @@ func (p *sampledLFU) updateIfHas(key uint64, cost int64) bool {
 		return true
 	}
 	return false
+}
+
+func (p *sampledLFU) roomLeft(cost int64) int64 {
+	return p.getMaxCost() - (p.used + cost)
+}
+
+func (p *sampledLFU) fillSample(in []*policyPair) []*policyPair {
+	if len(in) >= lfuSample {
+		return in
+	}
+
+	for key, cost := range p.keyCosts {
+		in = append(in, &policyPair{key, cost})
+		if len(in) >= lfuSample {
+			return in
+		}
+	}
+
+	return in
 }
