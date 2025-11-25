@@ -71,6 +71,26 @@ func (p *defaultPolicy[V]) Update(key uint64, cost int64) {
 	p.Unlock()
 }
 
+func (p *defaultPolicy[V]) Cap() int64 {
+	p.Lock()
+	capacity := p.evict.getMaxCost() - p.evict.used
+	p.Unlock()
+	return capacity
+}
+
+func (p *defaultPolicy[V]) Has(key uint64) bool {
+	p.Lock()
+	_, exists := p.evict.keyCosts[key]
+	p.Unlock()
+	return exists
+}
+
+func (p *defaultPolicy[V]) Del(key uint64) {
+	p.Lock()
+	p.evict.del(key)
+	p.Unlock()
+}
+
 func (p *defaultPolicy[V]) processItems() {
 	for {
 		select {
