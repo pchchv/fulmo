@@ -115,3 +115,24 @@ func (p *sampledLFU) getMaxCost() int64 {
 func (p *sampledLFU) updateMaxCost(maxCost int64) {
 	atomic.StoreInt64(&p.maxCost, maxCost)
 }
+
+func (p *sampledLFU) updateIfHas(key uint64, cost int64) bool {
+	if prev, found := p.keyCosts[key]; found {
+		// update the cost of an existing key,
+		// but don't worry about evicting
+		// evictions will be handled the next time a new item is added
+		p.metrics.add(keyUpdate, key, 1)
+		if prev > cost {
+			diff := prev - cost
+			p.metrics.add(costAdd, key, ^(uint64(diff) - 1))
+		} else if cost > prev {
+			diff := cost - prev
+			p.metrics.add(costAdd, key, uint64(diff))
+		}
+
+		p.used += cost - prev
+		p.keyCosts[key] = cost
+		return true
+	}
+	return false
+}
