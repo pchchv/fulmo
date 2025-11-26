@@ -2,6 +2,7 @@ package fulmo
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -196,4 +197,36 @@ func TestPolicyMetrics(t *testing.T) {
 	p.CollectMetrics(newMetrics())
 	require.NotNil(t, p.metrics)
 	require.NotNil(t, p.evict.metrics)
+}
+
+func TestPolicyPush(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	require.True(t, p.Push([]uint64{}))
+
+	var keepCount int
+	for i := 0; i < 10; i++ {
+		if p.Push([]uint64{1, 2, 3, 4, 5}) {
+			keepCount++
+		}
+	}
+
+	require.NotEqual(t, 0, keepCount)
+}
+
+func TestPolicyProcessItems(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	p.itemsCh <- []uint64{1, 2, 2}
+	time.Sleep(wait)
+	p.Lock()
+	require.Equal(t, int64(2), p.admit.Estimate(2))
+	require.Equal(t, int64(1), p.admit.Estimate(1))
+	p.Unlock()
+
+	p.stop <- struct{}{}
+	<-p.done
+	p.itemsCh <- []uint64{3, 3, 3}
+	time.Sleep(wait)
+	p.Lock()
+	require.Equal(t, int64(0), p.admit.Estimate(3))
+	p.Unlock()
 }

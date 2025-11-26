@@ -2,9 +2,12 @@ package fulmo
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+var wait = time.Millisecond * 10
 
 func TestMetrics(t *testing.T) {
 	newMetrics()
