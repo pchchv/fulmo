@@ -1,6 +1,7 @@
 package fulmo
 
 import (
+	"math"
 	"sync"
 	"sync/atomic"
 
@@ -138,6 +139,89 @@ func (p *defaultPolicy[V]) Push(keys []uint64) bool {
 		p.metrics.add(dropGets, keys[0], uint64(len(keys)))
 		return false
 	}
+}
+
+// Add decides whether the item with the given key and
+// cost should be accepted by the policy.
+// It returns the list of victims that have been evicted and
+// a boolean indicating whether the incoming item should be accepted.
+func (p *defaultPolicy[V]) Add(key uint64, cost int64) ([]*Item[V], bool) {
+	p.Lock()
+	defer p.Unlock()
+
+	// cannot add an item bigger than entire cache
+	if cost > p.evict.getMaxCost() {
+		return nil, false
+	}
+
+	// no need to go any further if the item is already in the cache
+	if has := p.evict.updateIfHas(key, cost); has {
+		// an update does not count as an addition,
+		// return false
+		return nil, false
+	}
+
+	// if the execution reaches this point,
+	// the key doesn't exist in the cache
+	// calculate the remaining room in the cache (usually bytes)
+	room := p.evict.roomLeft(cost)
+	if room >= 0 {
+		// there's enough room in the cache to store the new item without
+		// overflowing
+		// do that now and stop here
+		p.evict.add(key, cost)
+		p.metrics.add(costAdd, key, uint64(cost))
+		return nil, true
+	}
+
+	// incHits is the hit count for the incoming item
+	incHits := p.admit.Estimate(key)
+	// sample is the eviction candidate pool to be filled via random sampling
+
+	// TODO: A min-heap should be used here.
+	// Currently, the time complexity of finding the min is N.
+	// Min heap should bring it down to O(lg N).
+	sample := make([]*policyPair, 0, lfuSample)
+	// as items are evicted they will be appended to victims
+	victims := make([]*Item[V], 0)
+
+	// delete victims until there's enough space or
+	// a minKey is found that has more hits than incoming item
+	for ; room < 0; room = p.evict.roomLeft(cost) {
+		// fill up empty slots in sample
+		sample = p.evict.fillSample(sample)
+
+		// find minimally used item in sample
+		minKey, minHits, minId, minCost := uint64(0), int64(math.MaxInt64), 0, int64(0)
+		for i, pair := range sample {
+			// look up hit count for sample key
+			if hits := p.admit.Estimate(pair.key); hits < minHits {
+				minKey, minHits, minId, minCost = pair.key, hits, i, pair.cost
+			}
+		}
+
+		// if the incoming item isn't worth keeping in the policy, reject
+		if incHits < minHits {
+			p.metrics.add(rejectSets, key, 1)
+			return victims, false
+		}
+
+		// delete the victim from metadata
+		p.evict.del(minKey)
+		// delete the victim from sample
+		sample[minId] = sample[len(sample)-1]
+		sample = sample[:len(sample)-1]
+		// store victim in evicted victims slice
+		victims = append(victims, &Item[V]{
+			Key:      minKey,
+			Conflict: 0,
+			Cost:     minCost,
+		})
+	}
+
+	p.evict.add(key, cost)
+	p.metrics.add(costAdd, key, uint64(cost))
+	return victims, true
 }
 
 func (p *defaultPolicy[V]) processItems() {
