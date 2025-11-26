@@ -116,6 +116,30 @@ func (p *defaultPolicy[V]) UpdateMaxCost(maxCost int64) {
 	p.evict.updateMaxCost(maxCost)
 }
 
+func (p *defaultPolicy[V]) CollectMetrics(metrics *Metrics) {
+	p.metrics = metrics
+	p.evict.metrics = metrics
+}
+
+func (p *defaultPolicy[V]) Push(keys []uint64) bool {
+	if p.isClosed {
+		return false
+	}
+
+	if len(keys) == 0 {
+		return true
+	}
+
+	select {
+	case p.itemsCh <- keys:
+		p.metrics.add(keepGets, keys[0], uint64(len(keys)))
+		return true
+	default:
+		p.metrics.add(dropGets, keys[0], uint64(len(keys)))
+		return false
+	}
+}
+
 func (p *defaultPolicy[V]) processItems() {
 	for {
 		select {
