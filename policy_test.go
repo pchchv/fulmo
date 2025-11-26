@@ -152,3 +152,34 @@ func TestPolicyClear(t *testing.T) {
 	require.False(t, p.Has(2))
 	require.False(t, p.Has(3))
 }
+
+func TestPolicyUpdate(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	p.Add(1, 1)
+	p.Update(1, 2)
+	p.Lock()
+	require.Equal(t, int64(2), p.evict.keyCosts[1])
+	p.Unlock()
+}
+
+func TestPolicyCap(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	p.Add(1, 1)
+	require.Equal(t, int64(9), p.Cap())
+}
+
+func TestPolicyHas(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	p.Add(1, 1)
+	require.True(t, p.Has(1))
+	require.False(t, p.Has(2))
+}
+
+func TestPolicyDel(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	p.Add(1, 1)
+	p.Del(1)
+	p.Del(2)
+	require.False(t, p.Has(1))
+	require.False(t, p.Has(2))
+}
