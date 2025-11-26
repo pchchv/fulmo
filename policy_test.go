@@ -117,3 +117,38 @@ func TestPolicy(t *testing.T) {
 	}()
 	newPolicy[int](100, 10)
 }
+
+func TestPolicyClose(t *testing.T) {
+	defer func() {
+		require.NotNil(t, recover())
+	}()
+
+	p := newDefaultPolicy[int](100, 10)
+	p.Add(1, 1)
+	p.Close()
+	p.itemsCh <- []uint64{1}
+}
+
+func TestPushAfterClose(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	p.Close()
+	require.False(t, p.Push([]uint64{1, 2}))
+}
+
+func TestAddAfterClose(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	p.Close()
+	p.Add(1, 1)
+}
+
+func TestPolicyClear(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	p.Add(1, 1)
+	p.Add(2, 2)
+	p.Add(3, 3)
+	p.Clear()
+	require.Equal(t, int64(10), p.Cap())
+	require.False(t, p.Has(1))
+	require.False(t, p.Has(2))
+	require.False(t, p.Has(3))
+}
