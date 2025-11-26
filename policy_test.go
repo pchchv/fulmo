@@ -230,3 +230,32 @@ func TestPolicyProcessItems(t *testing.T) {
 	require.Equal(t, int64(0), p.admit.Estimate(3))
 	p.Unlock()
 }
+
+func TestPolicyAdd(t *testing.T) {
+	p := newDefaultPolicy[int](1000, 100)
+	if victims, added := p.Add(1, 101); victims != nil || added {
+		t.Fatal("can't add an item bigger than entire cache")
+	}
+	p.Lock()
+	p.evict.add(1, 1)
+	p.admit.Increment(1)
+	p.admit.Increment(2)
+	p.admit.Increment(3)
+	p.Unlock()
+
+	victims, added := p.Add(1, 1)
+	require.Nil(t, victims)
+	require.False(t, added)
+
+	victims, added = p.Add(2, 20)
+	require.Nil(t, victims)
+	require.True(t, added)
+
+	victims, added = p.Add(3, 90)
+	require.NotNil(t, victims)
+	require.True(t, added)
+
+	victims, added = p.Add(4, 20)
+	require.NotNil(t, victims)
+	require.False(t, added)
+}
