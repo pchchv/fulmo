@@ -183,3 +183,17 @@ func TestPolicyDel(t *testing.T) {
 	require.False(t, p.Has(1))
 	require.False(t, p.Has(2))
 }
+
+func TestPolicyCost(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	p.Add(1, 2)
+	require.Equal(t, int64(2), p.Cost(1))
+	require.Equal(t, int64(-1), p.Cost(2))
+}
+
+func TestPolicyMetrics(t *testing.T) {
+	p := newDefaultPolicy[int](100, 10)
+	p.CollectMetrics(newMetrics())
+	require.NotNil(t, p.metrics)
+	require.NotNil(t, p.evict.metrics)
+}
