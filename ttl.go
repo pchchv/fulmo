@@ -58,6 +58,50 @@ func (m *expirationMap[_]) add(key, conflict uint64, expiration time.Time) {
 	}
 }
 
+func (m *expirationMap[_]) update(key, conflict uint64, oldExpTime, newExpTime time.Time) {
+	if m == nil {
+		return
+	}
+
+	m.Lock()
+	defer m.Unlock()
+
+	oldBucketNum := storageBucket(oldExpTime)
+	oldBucket, ok := m.buckets[oldBucketNum]
+	if ok {
+		delete(oldBucket, key)
+	}
+
+	// items that don't expire don't need to be in the expiration map
+	if newExpTime.IsZero() {
+		return
+	}
+
+	newBucketNum := storageBucket(newExpTime)
+	newBucket, ok := m.buckets[newBucketNum]
+	if !ok {
+		newBucket = make(bucket)
+		m.buckets[newBucketNum] = newBucket
+	}
+
+	newBucket[key] = conflict
+}
+
+func (m *expirationMap[_]) del(key uint64, expiration time.Time) {
+	if m == nil {
+		return
+	}
+
+	bucketNum := storageBucket(expiration)
+	m.Lock()
+	defer m.Unlock()
+	if _, ok := m.buckets[bucketNum]; !ok {
+		return
+	}
+
+	delete(m.buckets[bucketNum], key)
+}
+
 func storageBucket(t time.Time) int64 {
 	return (t.Unix() / bucketDurationSecs) + 1
 }
