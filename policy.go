@@ -91,6 +91,31 @@ func (p *defaultPolicy[V]) Del(key uint64) {
 	p.Unlock()
 }
 
+func (p *defaultPolicy[V]) Cost(key uint64) int64 {
+	p.Lock()
+	if cost, found := p.evict.keyCosts[key]; found {
+		p.Unlock()
+		return cost
+	}
+
+	p.Unlock()
+	return -1
+}
+
+func (p *defaultPolicy[V]) MaxCost() int64 {
+	if p == nil || p.evict == nil {
+		return 0
+	}
+	return p.evict.getMaxCost()
+}
+
+func (p *defaultPolicy[V]) UpdateMaxCost(maxCost int64) {
+	if p == nil || p.evict == nil {
+		return
+	}
+	p.evict.updateMaxCost(maxCost)
+}
+
 func (p *defaultPolicy[V]) processItems() {
 	for {
 		select {
