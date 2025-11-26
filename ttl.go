@@ -25,6 +25,39 @@ func newExpirationMap[V any]() *expirationMap[V] {
 	}
 }
 
+// clear clears the expirationMap,
+// the caller is responsible for properly evicting the referenced items.
+func (m *expirationMap[V]) clear() {
+	if m != nil {
+		m.Lock()
+		m.buckets = make(map[int64]bucket)
+		m.lastCleanedBucketNum = cleanupBucket(time.Now())
+		m.Unlock()
+	}
+}
+
+func (m *expirationMap[_]) add(key, conflict uint64, expiration time.Time) {
+	if m == nil {
+		return
+	}
+
+	// items that don't expire don't need to be in the expiration map
+	if expiration.IsZero() {
+		return
+	}
+
+	bucketNum := storageBucket(expiration)
+	m.Lock()
+	defer m.Unlock()
+
+	if b, ok := m.buckets[bucketNum]; ok {
+		b[key] = conflict
+	} else {
+		b = make(bucket)
+		m.buckets[bucketNum] = b
+	}
+}
+
 func storageBucket(t time.Time) int64 {
 	return (t.Unix() / bucketDurationSecs) + 1
 }
