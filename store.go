@@ -116,6 +116,53 @@ func (m *lockedMap[V]) Clear(onEvict func(item *Item[V])) {
 	m.data = make(map[uint64]storeItem[V])
 }
 
+func (m *lockedMap[V]) Update(newItem *Item[V]) (V, bool) {
+	m.Lock()
+	defer m.Unlock()
+	item, ok := m.data[newItem.Key]
+	if !ok {
+		return zeroValue[V](), false
+	}
+
+	if newItem.Conflict != 0 && (newItem.Conflict != item.conflict) {
+		return zeroValue[V](), false
+	}
+
+	if m.shouldUpdate != nil && !m.shouldUpdate(newItem.Value, item.value) {
+		return item.value, false
+	}
+
+	m.em.update(newItem.Key, newItem.Conflict, item.expiration, newItem.Expiration)
+	m.data[newItem.Key] = storeItem[V]{
+		key:        newItem.Key,
+		conflict:   newItem.Conflict,
+		value:      newItem.Value,
+		expiration: newItem.Expiration,
+	}
+
+	return item.value, true
+}
+
+func (m *lockedMap[V]) Del(key, conflict uint64) (uint64, V) {
+	m.Lock()
+	defer m.Unlock()
+	item, ok := m.data[key]
+	if !ok {
+		return 0, zeroValue[V]()
+	}
+
+	if conflict != 0 && (conflict != item.conflict) {
+		return 0, zeroValue[V]()
+	}
+
+	if !item.expiration.IsZero() {
+		m.em.del(key, item.expiration)
+	}
+
+	delete(m.data, key)
+	return item.conflict, item.value
+}
+
 func (m *lockedMap[V]) setShouldUpdateFn(f updateFn[V]) {
 	m.shouldUpdate = f
 }
