@@ -42,6 +42,11 @@ type store[V any] interface {
 	SetShouldUpdateFn(f updateFn[V])
 }
 
+// newStore returns the default store implementation.
+func newStore[V any]() store[V] {
+	return newShardedMap[V]()
+}
+
 type lockedMap[V any] struct {
 	sync.RWMutex
 	em           *expirationMap[V]
