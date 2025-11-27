@@ -249,3 +249,8 @@ func stringFor(t metricType) string {
 		return "unidentified"
 	}
 }
+
+func zeroValue[T any]() T {
+	var zero T
+	return zero
+}
