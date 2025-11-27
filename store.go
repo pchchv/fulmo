@@ -56,3 +56,47 @@ func newLockedMap[V any](em *expirationMap[V]) *lockedMap[V] {
 		},
 	}
 }
+
+func (m *lockedMap[V]) Set(i *Item[V]) {
+	if i == nil {
+		// if item is nil make this Set a no-op
+		return
+	}
+
+	m.Lock()
+	defer m.Unlock()
+	item, ok := m.data[i.Key]
+
+	if ok {
+		// item existed already
+		// is needed to check the conflict key and reject the update if they do not match
+		// only after that the expiration map is updated
+		if i.Conflict != 0 && (i.Conflict != item.conflict) {
+			return
+		}
+
+		if m.shouldUpdate != nil && !m.shouldUpdate(i.Value, item.value) {
+			return
+		}
+
+		m.em.update(i.Key, i.Conflict, item.expiration, i.Expiration)
+	} else {
+		// value is not in the map already
+		// there's no need to return anything
+		// simply add the expiration map
+		m.em.add(i.Key, i.Conflict, i.Expiration)
+	}
+
+	m.data[i.Key] = storeItem[V]{
+		key:        i.Key,
+		conflict:   i.Conflict,
+		value:      i.Value,
+		expiration: i.Expiration,
+	}
+}
+
+func (m *lockedMap[V]) Expiration(key uint64) time.Time {
+	m.RLock()
+	defer m.RUnlock()
+	return m.data[key].expiration
+}
