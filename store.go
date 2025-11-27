@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const numShards uint64 = 256
+
 type updateFn[V any] func(cur, prev V) bool
 
 type storeItem[V any] struct {
@@ -38,6 +40,24 @@ type store[V any] interface {
 	// Clear clears all contents of the store.
 	Clear(onEvict func(item *Item[V]))
 	SetShouldUpdateFn(f updateFn[V])
+}
+
+type shardedMap[V any] struct {
+	shards    []*lockedMap[V]
+	expiryMap *expirationMap[V]
+}
+
+func newShardedMap[V any]() *shardedMap[V] {
+	sm := &shardedMap[V]{
+		shards:    make([]*lockedMap[V], int(numShards)),
+		expiryMap: newExpirationMap[V](),
+	}
+
+	for i := range sm.shards {
+		sm.shards[i] = newLockedMap[V](sm.expiryMap)
+	}
+
+	return sm
 }
 
 type lockedMap[V any] struct {
