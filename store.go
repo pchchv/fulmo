@@ -100,3 +100,22 @@ func (m *lockedMap[V]) Expiration(key uint64) time.Time {
 	defer m.RUnlock()
 	return m.data[key].expiration
 }
+
+func (m *lockedMap[V]) Clear(onEvict func(item *Item[V])) {
+	m.Lock()
+	defer m.Unlock()
+	i := &Item[V]{}
+	if onEvict != nil {
+		for _, si := range m.data {
+			i.Key = si.key
+			i.Conflict = si.conflict
+			i.Value = si.value
+			onEvict(i)
+		}
+	}
+	m.data = make(map[uint64]storeItem[V])
+}
+
+func (m *lockedMap[V]) setShouldUpdateFn(f updateFn[V]) {
+	m.shouldUpdate = f
+}
