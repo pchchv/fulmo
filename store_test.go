@@ -138,6 +138,74 @@ func TestStoreExpiration(t *testing.T) {
 	require.True(t, ttl.IsZero())
 }
 
+func TestStoreClear(t *testing.T) {
+	s := newStore[uint64]()
+	for i := uint64(0); i < 1000; i++ {
+		key, conflict := helpers.KeyToHash(i)
+		it := Item[uint64]{
+			Key:      key,
+			Conflict: conflict,
+			Value:    i,
+		}
+		s.Set(&it)
+	}
+	s.Clear(nil)
+	for i := uint64(0); i < 1000; i++ {
+		key, conflict := helpers.KeyToHash(i)
+		val, ok := s.Get(key, conflict)
+		require.False(t, ok)
+		require.Empty(t, val)
+	}
+}
+
+func TestStoreSetGet(t *testing.T) {
+	s := newStore[int]()
+	key, conflict := helpers.KeyToHash(1)
+	i := Item[int]{
+		Key:      key,
+		Conflict: conflict,
+		Value:    2,
+	}
+	s.Set(&i)
+	val, ok := s.Get(key, conflict)
+	require.True(t, ok)
+	require.Equal(t, 2, val)
+
+	i.Value = 3
+	s.Set(&i)
+	val, ok = s.Get(key, conflict)
+	require.True(t, ok)
+	require.Equal(t, 3, val)
+
+	key, conflict = helpers.KeyToHash(2)
+	i = Item[int]{
+		Key:      key,
+		Conflict: conflict,
+		Value:    2,
+	}
+	s.Set(&i)
+	val, ok = s.Get(key, conflict)
+	require.True(t, ok)
+	require.Equal(t, 2, val)
+}
+
+func TestStoreDel(t *testing.T) {
+	s := newStore[int]()
+	key, conflict := helpers.KeyToHash(1)
+	i := Item[int]{
+		Key:      key,
+		Conflict: conflict,
+		Value:    1,
+	}
+	s.Set(&i)
+	s.Del(key, conflict)
+	val, ok := s.Get(key, conflict)
+	require.False(t, ok)
+	require.Empty(t, val)
+
+	s.Del(2, 0)
+}
+
 func BenchmarkStoreGet(b *testing.B) {
 	s := newStore[int]()
 	key, conflict := helpers.KeyToHash(1)
