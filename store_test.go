@@ -2,6 +2,7 @@ package fulmo
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pchchv/fulmo/helpers"
 	"github.com/stretchr/testify/require"
@@ -70,6 +71,71 @@ func TestShouldUpdate(t *testing.T) {
 	i.Value = 3
 	_, ok = s.Update(&i)
 	require.True(t, ok)
+}
+
+func TestStoreCollision(t *testing.T) {
+	s := newShardedMap[int]()
+	s.shards[1].Lock()
+	s.shards[1].data[1] = storeItem[int]{
+		key:      1,
+		conflict: 0,
+		value:    1,
+	}
+	s.shards[1].Unlock()
+	val, ok := s.Get(1, 1)
+	require.False(t, ok)
+	require.Empty(t, val)
+
+	i := Item[int]{
+		Key:      1,
+		Conflict: 1,
+		Value:    2,
+	}
+	s.Set(&i)
+	val, ok = s.Get(1, 0)
+	require.True(t, ok)
+	require.NotEqual(t, 2, val)
+
+	_, ok = s.Update(&i)
+	require.False(t, ok)
+	val, ok = s.Get(1, 0)
+	require.True(t, ok)
+	require.NotEqual(t, 2, val)
+
+	s.Del(1, 1)
+	val, ok = s.Get(1, 0)
+	require.True(t, ok)
+	require.NotEmpty(t, val)
+}
+
+func TestStoreExpiration(t *testing.T) {
+	s := newStore[int]()
+	key, conflict := helpers.KeyToHash(1)
+	expiration := time.Now().Add(time.Second)
+	i := Item[int]{
+		Key:        key,
+		Conflict:   conflict,
+		Value:      1,
+		Expiration: expiration,
+	}
+	s.Set(&i)
+	val, ok := s.Get(key, conflict)
+	require.True(t, ok)
+	require.Equal(t, 1, val)
+
+	ttl := s.Expiration(key)
+	require.Equal(t, expiration, ttl)
+
+	s.Del(key, conflict)
+
+	_, ok = s.Get(key, conflict)
+	require.False(t, ok)
+	require.True(t, s.Expiration(key).IsZero())
+
+	// missing item
+	key, _ = helpers.KeyToHash(4340958203495)
+	ttl = s.Expiration(key)
+	require.True(t, ttl.IsZero())
 }
 
 func BenchmarkStoreGet(b *testing.B) {
