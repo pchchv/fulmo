@@ -221,3 +221,11 @@ func (m *shardedMap[V]) SetShouldUpdateFn(f updateFn[V]) {
 		m.shards[i].setShouldUpdateFn(f)
 	}
 }
+
+func (sm *shardedMap[V]) Get(key, conflict uint64) (V, bool) {
+	return sm.shards[key%numShards].get(key, conflict)
+}
+
+func (sm *shardedMap[V]) Del(key, conflict uint64) (uint64, V) {
+	return sm.shards[key%numShards].Del(key, conflict)
+}
