@@ -229,3 +229,14 @@ func (sm *shardedMap[V]) Get(key, conflict uint64) (V, bool) {
 func (sm *shardedMap[V]) Del(key, conflict uint64) (uint64, V) {
 	return sm.shards[key%numShards].Del(key, conflict)
 }
+
+func (sm *shardedMap[V]) Clear(onEvict func(item *Item[V])) {
+	for i := uint64(0); i < numShards; i++ {
+		sm.shards[i].Clear(onEvict)
+	}
+	sm.expiryMap.clear()
+}
+
+func (sm *shardedMap[V]) Cleanup(policy *defaultPolicy[V], onEvict func(item *Item[V])) {
+	sm.expiryMap.cleanup(sm, policy, onEvict)
+}
