@@ -102,6 +102,58 @@ func (m *expirationMap[_]) del(key uint64, expiration time.Time) {
 	delete(m.buckets[bucketNum], key)
 }
 
+// cleanup removes all the items in the bucket that was just completed.
+// It deletes those items from the store,
+// and calls the onEvict function on those items.
+// This function is meant to be called periodically.
+func (m *expirationMap[V]) cleanup(store store[V], policy *defaultPolicy[V], onEvict func(item *Item[V])) int {
+	if m == nil {
+		return 0
+	}
+
+	m.Lock()
+	now := time.Now()
+	currentBucketNum := cleanupBucket(now)
+	// Clean up all buckets up to and including currentBucketNum,
+	// starting from (but not including) the last one that was cleaned up
+	var buckets []bucket
+	for bucketNum := m.lastCleanedBucketNum + 1; bucketNum <= currentBucketNum; bucketNum++ {
+		// with an empty bucket, don't need to add it to the Clean list
+		if b := m.buckets[bucketNum]; b != nil {
+			buckets = append(buckets, b)
+		}
+		delete(m.buckets, bucketNum)
+	}
+	m.lastCleanedBucketNum = currentBucketNum
+	m.Unlock()
+
+	for _, keys := range buckets {
+		for key, conflict := range keys {
+			expr := store.Expiration(key)
+			// sanity check
+			// verify that the store agrees that this key is expired
+			if expr.After(now) {
+				continue
+			}
+
+			cost := policy.Cost(key)
+			policy.Del(key)
+			_, value := store.Del(key, conflict)
+			if onEvict != nil {
+				onEvict(&Item[V]{Key: key,
+					Conflict:   conflict,
+					Value:      value,
+					Cost:       cost,
+					Expiration: expr,
+				})
+			}
+		}
+	}
+
+	cleanedBucketsCount := len(buckets)
+	return cleanedBucketsCount
+}
+
 func storageBucket(t time.Time) int64 {
 	return (t.Unix() / bucketDurationSecs) + 1
 }
