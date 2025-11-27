@@ -1,6 +1,9 @@
 package fulmo
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 type updateFn[V any] func(cur, prev V) bool
 
@@ -35,4 +38,21 @@ type store[V any] interface {
 	// Clear clears all contents of the store.
 	Clear(onEvict func(item *Item[V]))
 	SetShouldUpdateFn(f updateFn[V])
+}
+
+type lockedMap[V any] struct {
+	sync.RWMutex
+	em           *expirationMap[V]
+	data         map[uint64]storeItem[V]
+	shouldUpdate updateFn[V]
+}
+
+func newLockedMap[V any](em *expirationMap[V]) *lockedMap[V] {
+	return &lockedMap[V]{
+		em:   em,
+		data: make(map[uint64]storeItem[V]),
+		shouldUpdate: func(cur, prev V) bool {
+			return true
+		},
+	}
 }
