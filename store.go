@@ -42,24 +42,6 @@ type store[V any] interface {
 	SetShouldUpdateFn(f updateFn[V])
 }
 
-type shardedMap[V any] struct {
-	shards    []*lockedMap[V]
-	expiryMap *expirationMap[V]
-}
-
-func newShardedMap[V any]() *shardedMap[V] {
-	sm := &shardedMap[V]{
-		shards:    make([]*lockedMap[V], int(numShards)),
-		expiryMap: newExpirationMap[V](),
-	}
-
-	for i := range sm.shards {
-		sm.shards[i] = newLockedMap[V](sm.expiryMap)
-	}
-
-	return sm
-}
-
 type lockedMap[V any] struct {
 	sync.RWMutex
 	em           *expirationMap[V]
@@ -205,4 +187,37 @@ func (m *lockedMap[V]) get(key, conflict uint64) (V, bool) {
 	}
 
 	return item.value, true
+}
+
+type shardedMap[V any] struct {
+	shards    []*lockedMap[V]
+	expiryMap *expirationMap[V]
+}
+
+func newShardedMap[V any]() *shardedMap[V] {
+	sm := &shardedMap[V]{
+		shards:    make([]*lockedMap[V], int(numShards)),
+		expiryMap: newExpirationMap[V](),
+	}
+
+	for i := range sm.shards {
+		sm.shards[i] = newLockedMap[V](sm.expiryMap)
+	}
+
+	return sm
+}
+
+func (sm *shardedMap[V]) Set(i *Item[V]) {
+	if i == nil {
+		// if item is nil make this Set a no-op
+		return
+	}
+
+	sm.shards[i.Key%numShards].Set(i)
+}
+
+func (m *shardedMap[V]) SetShouldUpdateFn(f updateFn[V]) {
+	for i := range m.shards {
+		m.shards[i].setShouldUpdateFn(f)
+	}
 }
