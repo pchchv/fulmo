@@ -240,3 +240,11 @@ func (sm *shardedMap[V]) Clear(onEvict func(item *Item[V])) {
 func (sm *shardedMap[V]) Cleanup(policy *defaultPolicy[V], onEvict func(item *Item[V])) {
 	sm.expiryMap.cleanup(sm, policy, onEvict)
 }
+
+func (sm *shardedMap[V]) Update(newItem *Item[V]) (V, bool) {
+	return sm.shards[newItem.Key%numShards].Update(newItem)
+}
+
+func (sm *shardedMap[V]) Expiration(key uint64) time.Time {
+	return sm.shards[key%numShards].Expiration(key)
+}
