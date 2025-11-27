@@ -166,3 +166,23 @@ func (m *lockedMap[V]) Del(key, conflict uint64) (uint64, V) {
 func (m *lockedMap[V]) setShouldUpdateFn(f updateFn[V]) {
 	m.shouldUpdate = f
 }
+
+func (m *lockedMap[V]) get(key, conflict uint64) (V, bool) {
+	m.RLock()
+	item, ok := m.data[key]
+	m.RUnlock()
+	if !ok {
+		return zeroValue[V](), false
+	}
+
+	if conflict != 0 && (conflict != item.conflict) {
+		return zeroValue[V](), false
+	}
+
+	// handle expired items
+	if !item.expiration.IsZero() && time.Now().After(item.expiration) {
+		return zeroValue[V](), false
+	}
+
+	return item.value, true
+}
