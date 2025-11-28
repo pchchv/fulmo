@@ -17,6 +17,16 @@ type ringBuffer struct {
 	pool *sync.Pool
 }
 
+// Push adds an element to one of
+// the internal stripes and possibly drains if
+// the stripe becomes full.
+func (b *ringBuffer) Push(item uint64) {
+	// reuse or create a new stripe
+	stripe := b.pool.Get().(*ringStripe)
+	stripe.Push(item)
+	b.pool.Put(stripe)
+}
+
 // ringStripe is a singular ring buffer that is not concurrent safe.
 type ringStripe struct {
 	cons ringConsumer
