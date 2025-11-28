@@ -321,6 +321,11 @@ func TestRecacheWithTTL(t *testing.T) {
 	require.Equal(t, 2, val)
 }
 
+func init() {
+	// Set bucketSizeSecs to 1 to avoid waiting too much during the tests.
+	bucketDurationSecs = 1
+}
+
 func newTestCache() (*Cache[int, int], error) {
 	return NewCache(&Config[int, int]{
 		NumCounters: 100,
@@ -328,4 +333,21 @@ func newTestCache() (*Cache[int, int], error) {
 		BufferItems: 64,
 		Metrics:     true,
 	})
+}
+
+// retrySet calls SetWithTTL until the item is accepted by the cache.
+func retrySet(t *testing.T, c *Cache[int, int], key, value int, cost int64, ttl time.Duration) {
+	for {
+		if set := c.SetWithTTL(key, value, cost, ttl); !set {
+			time.Sleep(wait)
+			continue
+		}
+
+		time.Sleep(wait)
+		val, ok := c.Get(key)
+		require.True(t, ok)
+		require.NotNil(t, val)
+		require.Equal(t, value, val)
+		return
+	}
 }
