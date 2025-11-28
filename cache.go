@@ -2,6 +2,7 @@ package fulmo
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -31,6 +32,8 @@ const (
 	keepGets
 	doNotUse // should be the final enum. Other enums should be set before this
 )
+
+var setBufSize = 32 * 1024
 
 // Item is a full representation of what's stored in the cache for each key-value pair.
 type Item[V any] struct {
@@ -357,6 +360,71 @@ type Cache[K Key, V any] struct {
 	// Metrics contains a running log of important statistics like hits, misses,
 	// and dropped items.
 	Metrics *Metrics
+}
+
+// NewCache returns a new Cache instance and any configuration errors, if any.
+func NewCache[K Key, V any](config *Config[K, V]) (*Cache[K, V], error) {
+	switch {
+	case config.NumCounters == 0:
+		return nil, errors.New("NumCounters can't be zero")
+	case config.NumCounters < 0:
+		return nil, errors.New("NumCounters can't be negative")
+	case config.MaxCost == 0:
+		return nil, errors.New("MaxCost can't be zero")
+	case config.MaxCost < 0:
+		return nil, errors.New("MaxCost can't be negative")
+	case config.BufferItems == 0:
+		return nil, errors.New("BufferItems can't be zero")
+	case config.BufferItems < 0:
+		return nil, errors.New("BufferItems can't be negative")
+	case config.TtlTickerDurationInSec == 0:
+		config.TtlTickerDurationInSec = bucketDurationSecs
+	}
+
+	policy := newPolicy[V](config.NumCounters, config.MaxCost)
+	cache := &Cache[K, V]{
+		storedItems:        newStore[V](),
+		cachePolicy:        policy,
+		getBuf:             newRingBuffer(policy, config.BufferItems),
+		setBuf:             make(chan *Item[V], setBufSize),
+		keyToHash:          config.KeyToHash,
+		stop:               make(chan struct{}),
+		done:               make(chan struct{}),
+		cost:               config.Cost,
+		ignoreInternalCost: config.IgnoreInternalCost,
+		cleanupTicker:      time.NewTicker(time.Duration(config.TtlTickerDurationInSec) * time.Second / 2),
+	}
+	cache.storedItems.SetShouldUpdateFn(config.ShouldUpdate)
+	cache.onExit = func(val V) {
+		if config.OnExit != nil {
+			config.OnExit(val)
+		}
+	}
+	cache.onEvict = func(item *Item[V]) {
+		if config.OnEvict != nil {
+			config.OnEvict(item)
+		}
+		cache.onExit(item.Value)
+	}
+	cache.onReject = func(item *Item[V]) {
+		if config.OnReject != nil {
+			config.OnReject(item)
+		}
+		cache.onExit(item.Value)
+	}
+	if cache.keyToHash == nil {
+		cache.keyToHash = helpers.KeyToHash[K]
+	}
+
+	if config.Metrics {
+		cache.collectMetrics()
+	}
+
+	// NOTE: benchmarks show that performance degrades as
+	// the number of cache.processItems() goroutines running increases,
+	// so a value of 1 is usually sufficient.
+	go cache.processItems()
+	return cache, nil
 }
 
 // Get returns the value (if any) and
