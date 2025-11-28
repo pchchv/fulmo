@@ -359,6 +359,27 @@ type Cache[K Key, V any] struct {
 	Metrics *Metrics
 }
 
+// Get returns the value (if any) and
+// a boolean representing whether the value was found or not.
+// The value can be nil and the boolean can be true at the same time.
+// Get will not return expired items.
+func (c *Cache[K, V]) Get(key K) (V, bool) {
+	if c == nil || c.isClosed.Load() {
+		return zeroValue[V](), false
+	}
+	keyHash, conflictHash := c.keyToHash(key)
+
+	c.getBuf.Push(keyHash)
+	value, ok := c.storedItems.Get(keyHash, conflictHash)
+	if ok {
+		c.Metrics.add(hit, keyHash, 1)
+	} else {
+		c.Metrics.add(miss, keyHash, 1)
+	}
+
+	return value, ok
+}
+
 // processItems is ran by goroutines processing the Set buffer.
 func (c *Cache[K, V]) processItems() {
 	startTs := make(map[uint64]time.Time)
@@ -432,6 +453,13 @@ func (c *Cache[K, V]) processItems() {
 			return
 		}
 	}
+}
+
+// collectMetrics just creates a new *Metrics instance and
+// adds the pointers to the cache and policy instances.
+func (c *Cache[K, V]) collectMetrics() {
+	c.Metrics = newMetrics()
+	c.cachePolicy.CollectMetrics(c.Metrics)
 }
 
 func stringFor(t metricType) string {
