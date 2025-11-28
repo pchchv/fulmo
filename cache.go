@@ -250,6 +250,46 @@ func stringFor(t metricType) string {
 	}
 }
 
+// Cache is a thread-safe hash map implementation with a TinyLFU admission policy and a SampledLFU eviction policy.
+// A single Cache instance can be used by any number of goroutines.
+type Cache[K Key, V any] struct {
+	// storedItems is the central concurrent hashmap where key-value items are stored.
+	storedItems store[V]
+	// cachePolicy determines what gets let in to the cache and what gets kicked out.
+	cachePolicy *defaultPolicy[V]
+	// getBuf is a custom ring buffer implementation that gets pushed to when
+	// keys are read.
+	getBuf *ringBuffer
+	// setBuf is a buffer allowing us to batch/drop Sets during times of high
+	// contention.
+	setBuf chan *Item[V]
+	// onEvict is called for item evictions.
+	onEvict func(*Item[V])
+	// onReject is called when an item is rejected via admission policy.
+	onReject func(*Item[V])
+	// onExit is called whenever a value goes out of scope from the cache.
+	onExit (func(V))
+	// KeyToHash function is used to customize the key hashing algorithm.
+	// Each key will be hashed using the provided function. If keyToHash value
+	// is not set, the default keyToHash function is used.
+	keyToHash func(K) (uint64, uint64)
+	// stop is used to stop the processItems goroutine.
+	stop chan struct{}
+	done chan struct{}
+	// indicates whether cache is closed.
+	isClosed atomic.Bool
+	// cost calculates cost from a value.
+	cost func(value V) int64
+	// ignoreInternalCost dictates whether to ignore the cost of internally storing
+	// the item in the cost calculation.
+	ignoreInternalCost bool
+	// cleanupTicker is used to periodically check for entries whose TTL has passed.
+	cleanupTicker *time.Ticker
+	// Metrics contains a running log of important statistics like hits, misses,
+	// and dropped items.
+	Metrics *Metrics
+}
+
 func zeroValue[T any]() T {
 	var zero T
 	return zero
