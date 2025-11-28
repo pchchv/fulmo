@@ -1,6 +1,7 @@
 package fulmo
 
 import (
+	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -551,6 +552,178 @@ func TestBlockOnClear(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatalf("timed out while waiting on cache")
 	}
+}
+
+func TestDropUpdates(t *testing.T) {
+	originalSetBufSize := setBufSize
+	defer func() { setBufSize = originalSetBufSize }()
+
+	test := func() {
+		// droppedMap stores the items dropped from the cache.
+		droppedMap := make(map[int]struct{})
+		lastEvictedSet := int64(-1)
+
+		var err error
+		handler := func(_ interface{}, value interface{}) {
+			v := value.(string)
+			lastEvictedSet, err = strconv.ParseInt(v, 10, 32)
+			require.NoError(t, err)
+
+			_, ok := droppedMap[int(lastEvictedSet)]
+			if ok {
+				panic(fmt.Sprintf("val = %+v was dropped but it got evicted. Dropped items: %+v\n",
+					lastEvictedSet, droppedMap))
+			}
+		}
+
+		// this is important
+		// The race condition shows up only when the setBuf is
+		// full and that's why we reduce the buf size here.
+		// The test will try to fill up the setbuf to
+		// it's capacity and then perform an update on a key.
+		setBufSize = 10
+		c, err := NewCache(&Config[int, string]{
+			NumCounters:        100,
+			MaxCost:            10,
+			BufferItems:        64,
+			IgnoreInternalCost: true,
+			Metrics:            true,
+			OnEvict: func(item *Item[string]) {
+				handler(nil, item.Value)
+			},
+		})
+		require.NoError(t, err)
+
+		for i := 0; i < 5*setBufSize; i++ {
+			v := fmt.Sprintf("%0100d", i)
+			// updating the same key
+			if !c.Set(0, v, 1) {
+				// race condition doesn't show up without this sleep
+				time.Sleep(time.Microsecond)
+				droppedMap[i] = struct{}{}
+			}
+		}
+		// wait for all items to be processed: prevents next c.Set from getting dropped
+		c.Wait()
+		// this will cause eviction from the cache
+		require.True(t, c.Set(1, "1", 10))
+
+		// Close() calls Clear(),
+		// which can cause the (key, value) pair of (1, nil) to be passed to
+		// the OnEvict() callback if it was still in the setBuf.
+		// This fixes a panic in OnEvict: "interface {} is nil, not string"
+		c.Wait()
+		c.Close()
+
+		require.NotEqual(t, int64(-1), lastEvictedSet)
+	}
+
+	// run the test 100 times since it's not reliable
+	for i := 0; i < 100; i++ {
+		test()
+	}
+}
+
+func TestCacheProcessItems(t *testing.T) {
+	m := &sync.Mutex{}
+	evicted := make(map[uint64]struct{})
+	c, err := NewCache(&Config[int, int]{
+		NumCounters:        100,
+		MaxCost:            10,
+		BufferItems:        64,
+		IgnoreInternalCost: true,
+		Cost: func(value int) int64 {
+			return int64(value)
+		},
+		OnEvict: func(item *Item[int]) {
+			m.Lock()
+			defer m.Unlock()
+			evicted[item.Key] = struct{}{}
+		},
+	})
+	require.NoError(t, err)
+
+	var key uint64
+	var conflict uint64
+
+	key, conflict = helpers.KeyToHash(1)
+	c.setBuf <- &Item[int]{
+		flag:     itemNew,
+		Key:      key,
+		Conflict: conflict,
+		Value:    1,
+		Cost:     0,
+	}
+	time.Sleep(wait)
+	require.True(t, c.cachePolicy.Has(1))
+	require.Equal(t, int64(1), c.cachePolicy.Cost(1))
+
+	key, conflict = helpers.KeyToHash(1)
+	c.setBuf <- &Item[int]{
+		flag:     itemUpdate,
+		Key:      key,
+		Conflict: conflict,
+		Value:    2,
+		Cost:     0,
+	}
+	time.Sleep(wait)
+	require.Equal(t, int64(2), c.cachePolicy.Cost(1))
+
+	key, conflict = helpers.KeyToHash(1)
+	c.setBuf <- &Item[int]{
+		flag:     itemDelete,
+		Key:      key,
+		Conflict: conflict,
+	}
+	time.Sleep(wait)
+	key, conflict = helpers.KeyToHash(1)
+	val, ok := c.storedItems.Get(key, conflict)
+	require.False(t, ok)
+	require.Zero(t, val)
+	require.False(t, c.cachePolicy.Has(1))
+
+	key, conflict = helpers.KeyToHash(2)
+	c.setBuf <- &Item[int]{
+		flag:     itemNew,
+		Key:      key,
+		Conflict: conflict,
+		Value:    2,
+		Cost:     3,
+	}
+	key, conflict = helpers.KeyToHash(3)
+	c.setBuf <- &Item[int]{
+		flag:     itemNew,
+		Key:      key,
+		Conflict: conflict,
+		Value:    3,
+		Cost:     3,
+	}
+	key, conflict = helpers.KeyToHash(4)
+	c.setBuf <- &Item[int]{
+		flag:     itemNew,
+		Key:      key,
+		Conflict: conflict,
+		Value:    3,
+		Cost:     3,
+	}
+	key, conflict = helpers.KeyToHash(5)
+	c.setBuf <- &Item[int]{
+		flag:     itemNew,
+		Key:      key,
+		Conflict: conflict,
+		Value:    3,
+		Cost:     5,
+	}
+	time.Sleep(wait)
+	m.Lock()
+	require.NotEqual(t, 0, len(evicted))
+	m.Unlock()
+
+	defer func() {
+		require.NotNil(t, recover())
+	}()
+	c.Close()
+	c.setBuf <- &Item[int]{flag: itemNew}
 }
 
 func init() {
