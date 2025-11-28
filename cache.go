@@ -448,16 +448,32 @@ func (c *Cache[K, V]) Get(key K) (V, bool) {
 	return value, ok
 }
 
-// // Wait blocks until all buffered writes have been applied. This ensures a call to Set()
-// // will be visible to future calls to Get().
-// func (c *Cache[K, V]) Wait() {
-// 	if c == nil || c.isClosed.Load() {
-// 		return
-// 	}
-// 	wait := make(chan struct{})
-// 	c.setBuf <- &Item[V]{wait: wait}
-// 	<-wait
-// }
+// GetTTL returns the TTL for the specified key and a bool that is true if the
+// item was found and is not expired.
+func (c *Cache[K, V]) GetTTL(key K) (time.Duration, bool) {
+	if c == nil {
+		return 0, false
+	}
+
+	keyHash, conflictHash := c.keyToHash(key)
+	if _, ok := c.storedItems.Get(keyHash, conflictHash); !ok {
+		// not found
+		return 0, false
+	}
+
+	expiration := c.storedItems.Expiration(keyHash)
+	if expiration.IsZero() {
+		// found but no expiration
+		return 0, true
+	}
+
+	if time.Now().After(expiration) {
+		// found but expired
+		return 0, false
+	}
+
+	return time.Until(expiration), true
+}
 
 // Set attempts to add the key-value item to the cache. If it returns false,
 // then the Set was dropped and the key-value item isn't added to the cache.
@@ -589,6 +605,17 @@ func (c *Cache[K, V]) Close() {
 	c.cachePolicy.Close()
 	c.cleanupTicker.Stop()
 	c.isClosed.Store(true)
+}
+
+// Wait blocks until all buffered writes have been applied.
+// This ensures a call to Set() will be visible to future calls to Get().
+func (c *Cache[K, V]) Wait() {
+	if c != nil && !c.isClosed.Load() {
+		wait := make(chan struct{})
+		c.setBuf <- &Item[V]{wait: wait}
+		<-wait
+	}
+
 }
 
 // processItems is ran by goroutines processing the Set buffer.
