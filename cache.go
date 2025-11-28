@@ -6,11 +6,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/pchchv/fulmo/helpers"
 )
 
 const (
+	itemSize = int64(unsafe.Sizeof(storeItem[any]{}))
+
 	itemNew itemFlag = iota
 	itemDelete
 	itemUpdate
@@ -354,6 +357,81 @@ type Cache[K Key, V any] struct {
 	// Metrics contains a running log of important statistics like hits, misses,
 	// and dropped items.
 	Metrics *Metrics
+}
+
+// processItems is ran by goroutines processing the Set buffer.
+func (c *Cache[K, V]) processItems() {
+	startTs := make(map[uint64]time.Time)
+	numToKeep := 100000 // TODO: Make this configurable via options.
+	trackAdmission := func(key uint64) {
+		if c.Metrics == nil {
+			return
+		}
+
+		startTs[key] = time.Now()
+		if len(startTs) > numToKeep {
+			for k := range startTs {
+				if len(startTs) <= numToKeep {
+					break
+				}
+				delete(startTs, k)
+			}
+		}
+	}
+	onEvict := func(i *Item[V]) {
+		if ts, has := startTs[i.Key]; has {
+			c.Metrics.trackEviction(int64(time.Since(ts) / time.Second))
+			delete(startTs, i.Key)
+		}
+		if c.onEvict != nil {
+			c.onEvict(i)
+		}
+	}
+
+	for {
+		select {
+		case i := <-c.setBuf:
+			if i.wait != nil {
+				close(i.wait)
+				continue
+			}
+			// calculate item cost value if new or update
+			if i.Cost == 0 && c.cost != nil && i.flag != itemDelete {
+				i.Cost = c.cost(i.Value)
+			}
+			if !c.ignoreInternalCost {
+				// add the cost of internally storing the object
+				i.Cost += itemSize
+			}
+
+			switch i.flag {
+			case itemNew:
+				victims, added := c.cachePolicy.Add(i.Key, i.Cost)
+				if added {
+					c.storedItems.Set(i)
+					c.Metrics.add(keyAdd, i.Key, 1)
+					trackAdmission(i.Key)
+				} else {
+					c.onReject(i)
+				}
+				for _, victim := range victims {
+					victim.Conflict, victim.Value = c.storedItems.Del(victim.Key, 0)
+					onEvict(victim)
+				}
+			case itemUpdate:
+				c.cachePolicy.Update(i.Key, i.Cost)
+			case itemDelete:
+				c.cachePolicy.Del(i.Key) // Deals with metrics updates.
+				_, val := c.storedItems.Del(i.Key, i.Conflict)
+				c.onExit(val)
+			}
+		case <-c.cleanupTicker.C:
+			c.storedItems.Cleanup(c.cachePolicy, onEvict)
+		case <-c.stop:
+			c.done <- struct{}{}
+			return
+		}
+	}
 }
 
 func stringFor(t metricType) string {
