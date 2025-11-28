@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -320,6 +321,97 @@ func TestRecacheWithTTL(t *testing.T) {
 	require.NotNil(t, val)
 	require.Equal(t, 2, val)
 }
+
+func TestCacheSet(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters:        100,
+		MaxCost:            10,
+		IgnoreInternalCost: true,
+		BufferItems:        64,
+		Metrics:            true,
+	})
+	require.NoError(t, err)
+
+	retrySet(t, c, 1, 1, 1, 0)
+
+	c.Set(1, 2, 2)
+	val, ok := c.storedItems.Get(helpers.KeyToHash(1))
+	require.True(t, ok)
+	require.Equal(t, 2, val)
+
+	c.stop <- struct{}{}
+	<-c.done
+	for i := 0; i < setBufSize; i++ {
+		key, conflict := helpers.KeyToHash(1)
+		c.setBuf <- &Item[int]{
+			flag:     itemUpdate,
+			Key:      key,
+			Conflict: conflict,
+			Value:    1,
+			Cost:     1,
+		}
+	}
+	require.False(t, c.Set(2, 2, 1))
+	require.Equal(t, uint64(1), c.Metrics.SetsDropped())
+	close(c.setBuf)
+	close(c.stop)
+	close(c.done)
+
+	c = nil
+	require.False(t, c.Set(1, 1, 1))
+}
+
+func TestCacheSetWithTTL(t *testing.T) {
+	m := &sync.Mutex{}
+	evicted := make(map[uint64]struct{})
+	c, err := NewCache(&Config[int, int]{
+		NumCounters:        100,
+		MaxCost:            10,
+		IgnoreInternalCost: true,
+		BufferItems:        64,
+		Metrics:            true,
+		OnEvict: func(item *Item[int]) {
+			m.Lock()
+			defer m.Unlock()
+			evicted[item.Key] = struct{}{}
+		},
+	})
+	require.NoError(t, err)
+
+	retrySet(t, c, 1, 1, 1, time.Second)
+
+	// sleep to make sure the item has expired after execution resumes
+	time.Sleep(2 * time.Second)
+	val, ok := c.Get(1)
+	require.False(t, ok)
+	require.Zero(t, val)
+
+	// sleep to ensure that the bucket where the
+	// item was stored has been cleared from the expiraton map.
+	time.Sleep(5 * time.Second)
+	m.Lock()
+	require.Equal(t, 1, len(evicted))
+	_, ok = evicted[1]
+	require.True(t, ok)
+	m.Unlock()
+
+	// verify that expiration times are overwritten
+	retrySet(t, c, 2, 1, 1, time.Second)
+	retrySet(t, c, 2, 2, 1, 100*time.Second)
+	time.Sleep(3 * time.Second)
+	val, ok = c.Get(2)
+	require.True(t, ok)
+	require.Equal(t, 2, val)
+
+	// verify that entries with no expiration are overwritten
+	retrySet(t, c, 3, 1, 1, 0)
+	retrySet(t, c, 3, 2, 1, time.Second)
+	time.Sleep(3 * time.Second)
+	val, ok = c.Get(3)
+	require.False(t, ok)
+	require.Zero(t, val)
+}
+
 
 func init() {
 	// Set bucketSizeSecs to 1 to avoid waiting too much during the tests.
