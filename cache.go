@@ -532,6 +532,65 @@ func (c *Cache[K, V]) SetWithTTL(key K, value V, cost int64, ttl time.Duration) 
 	}
 }
 
+// Clear empties the hashmap and zeroes all cachePolicy counters.
+// Note that this is not an atomic operation
+// (but that shouldn't be a problem as it's assumed that Set/Get calls won't be occurring until after this).
+func (c *Cache[K, V]) Clear() {
+	if c == nil || c.isClosed.Load() {
+		return
+	}
+
+	// block until processItems goroutine is returned
+	c.stop <- struct{}{}
+	<-c.done
+	// clear out the setBuf channel
+loop:
+	for {
+		select {
+		case i := <-c.setBuf:
+			if i.wait != nil {
+				close(i.wait)
+				continue
+			}
+			if i.flag != itemUpdate {
+				// in itemUpdate, the value is already set in the storedItems
+				// so, no need to call onEvict here
+				c.onEvict(i)
+			}
+		default:
+			break loop
+		}
+	}
+
+	// clear value hashmap and cachePolicy data
+	c.cachePolicy.Clear()
+	c.storedItems.Clear(c.onEvict)
+	// only reset metrics if they're enabled
+	if c.Metrics != nil {
+		c.Metrics.Clear()
+	}
+	// restart processItems goroutine
+	go c.processItems()
+}
+
+// Close stops all goroutines and closes all channels.
+func (c *Cache[K, V]) Close() {
+	if c == nil || c.isClosed.Load() {
+		return
+	}
+	c.Clear()
+
+	// block until processItems goroutine is returned
+	c.stop <- struct{}{}
+	<-c.done
+	close(c.stop)
+	close(c.done)
+	close(c.setBuf)
+	c.cachePolicy.Close()
+	c.cleanupTicker.Stop()
+	c.isClosed.Store(true)
+}
+
 // processItems is ran by goroutines processing the Set buffer.
 func (c *Cache[K, V]) processItems() {
 	startTs := make(map[uint64]time.Time)
