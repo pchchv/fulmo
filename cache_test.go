@@ -262,6 +262,65 @@ func TestCacheWithTTL(t *testing.T) {
 	}
 }
 
+func TestCacheInternalCost(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters: 100,
+		MaxCost:     10,
+		BufferItems: 64,
+		Metrics:     true,
+	})
+	require.NoError(t, err)
+
+	// get should return false because the cache's cost is
+	// too small to storedItems the item when accounting for the internal cost
+	c.SetWithTTL(1, 1, 1, 0)
+	time.Sleep(wait)
+	_, ok := c.Get(1)
+	require.False(t, ok)
+}
+
+func TestRecacheWithTTL(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters:        100,
+		MaxCost:            10,
+		IgnoreInternalCost: true,
+		BufferItems:        64,
+		Metrics:            true,
+	})
+
+	require.NoError(t, err)
+
+	// set initial value for key = 1
+	insert := c.SetWithTTL(1, 1, 1, 5*time.Second)
+	require.True(t, insert)
+	time.Sleep(2 * time.Second)
+
+	// get value from cache for key = 1
+	val, ok := c.Get(1)
+	require.True(t, ok)
+	require.NotNil(t, val)
+	require.Equal(t, 1, val)
+
+	// wait for expiration
+	time.Sleep(5 * time.Second)
+
+	// cached value for key = 1 should be gone
+	val, ok = c.Get(1)
+	require.False(t, ok)
+	require.Zero(t, val)
+
+	// set new value for key = 1
+	insert = c.SetWithTTL(1, 2, 1, 5*time.Second)
+	require.True(t, insert)
+	time.Sleep(2 * time.Second)
+
+	// get value from cache for key = 1
+	val, ok = c.Get(1)
+	require.True(t, ok)
+	require.NotNil(t, val)
+	require.Equal(t, 2, val)
+}
+
 func newTestCache() (*Cache[int, int], error) {
 	return NewCache(&Config[int, int]{
 		NumCounters: 100,
