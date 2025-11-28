@@ -469,6 +469,90 @@ func TestDelAfterClose(t *testing.T) {
 	c.Del(1)
 }
 
+func TestCacheClear(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters:        100,
+		MaxCost:            10,
+		IgnoreInternalCost: true,
+		BufferItems:        64,
+		Metrics:            true,
+	})
+	require.NoError(t, err)
+
+	for i := 0; i < 10; i++ {
+		c.Set(i, i, 1)
+	}
+	time.Sleep(wait)
+	require.Equal(t, uint64(10), c.Metrics.KeysAdded())
+
+	c.Clear()
+	require.Equal(t, uint64(0), c.Metrics.KeysAdded())
+
+	for i := 0; i < 10; i++ {
+		val, ok := c.Get(i)
+		require.False(t, ok)
+		require.Zero(t, val)
+	}
+}
+
+func TestCacheMetricsClear(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters: 100,
+		MaxCost:     10,
+		BufferItems: 64,
+		Metrics:     true,
+	})
+	require.NoError(t, err)
+
+	c.Set(1, 1, 1)
+	stop := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				c.Get(1)
+			}
+		}
+	}()
+	time.Sleep(wait)
+	c.Clear()
+	stop <- struct{}{}
+	c.Metrics = nil
+	c.Metrics.Clear()
+}
+
+func TestBlockOnClear(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters: 100,
+		MaxCost:     10,
+		BufferItems: 64,
+		Metrics:     false,
+	})
+	require.NoError(t, err)
+	defer c.Close()
+
+	done := make(chan struct{})
+
+	go func() {
+		for i := 0; i < 10; i++ {
+			c.Wait()
+		}
+		close(done)
+	}()
+
+	for i := 0; i < 10; i++ {
+		c.Clear()
+	}
+
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatalf("timed out while waiting on cache")
+	}
+}
+
 func init() {
 	// Set bucketSizeSecs to 1 to avoid waiting too much during the tests.
 	bucketDurationSecs = 1
