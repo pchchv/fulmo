@@ -17,6 +17,22 @@ type ringBuffer struct {
 	pool *sync.Pool
 }
 
+// newRingBuffer returns a striped ring buffer.
+// The Consumer in ringConfig will be called when individual stripes are
+// full and need to drain their elements.
+func newRingBuffer(cons ringConsumer, capa int64) *ringBuffer {
+	// LOSSY buffers use a very simple sync.Pool for concurrently reusing stripes.
+	// Some stripes are lost due to GC (unclaimed items in the sync.Pool are cleared),
+	// but the performance gains generally outweigh the small percentage of lost elements.
+	// This performance is primarily comes from low-level runtime functions used in
+	// the standard library (e.g., runtime_procPin()).
+	return &ringBuffer{
+		pool: &sync.Pool{
+			New: func() interface{} { return newRingStripe(cons, capa) },
+		},
+	}
+}
+
 // Push adds an element to one of
 // the internal stripes and possibly drains if
 // the stripe becomes full.
