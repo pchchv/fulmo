@@ -412,6 +412,62 @@ func TestCacheSetWithTTL(t *testing.T) {
 	require.Zero(t, val)
 }
 
+func TestMultipleClose(t *testing.T) {
+	var c *Cache[int, int]
+	c.Close()
+
+	var err error
+	c, err = NewCache(&Config[int, int]{
+		NumCounters: 100,
+		MaxCost:     10,
+		BufferItems: 64,
+		Metrics:     true,
+	})
+	require.NoError(t, err)
+	c.Close()
+	c.Close()
+}
+
+func TestSetAfterClose(t *testing.T) {
+	c, err := newTestCache()
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	c.Close()
+	require.False(t, c.Set(1, 1, 1))
+}
+
+func TestClearAfterClose(t *testing.T) {
+	c, err := newTestCache()
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	c.Close()
+	c.Clear()
+}
+
+func TestGetAfterClose(t *testing.T) {
+	c, err := newTestCache()
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	require.True(t, c.Set(1, 1, 1))
+	c.Close()
+
+	_, ok := c.Get(1)
+	require.False(t, ok)
+}
+
+func TestDelAfterClose(t *testing.T) {
+	c, err := newTestCache()
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	require.True(t, c.Set(1, 1, 1))
+	c.Close()
+
+	c.Del(1)
+}
 
 func init() {
 	// Set bucketSizeSecs to 1 to avoid waiting too much during the tests.
