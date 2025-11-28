@@ -31,3 +31,18 @@ func newRingStripe(cons ringConsumer, capa int64) *ringStripe {
 		capa: int(capa),
 	}
 }
+
+// Push appends an item in the ring buffer and
+// drains (copies items and sends to Consumer) if full.
+func (s *ringStripe) Push(item uint64) {
+	s.data = append(s.data, item)
+	// decide if the ring buffer should be drained
+	if len(s.data) >= s.capa {
+		// send elements to consumer and create a new ring stripe
+		if s.cons.Push(s.data) {
+			s.data = make([]uint64, 0, s.capa)
+		} else {
+			s.data = s.data[:0]
+		}
+	}
+}
