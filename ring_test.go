@@ -41,3 +41,31 @@ func TestRingConsumer(t *testing.T) {
 	require.NotEqual(t, 0, l)
 	require.True(t, l <= 100)
 }
+
+func TestRingDrain(t *testing.T) {
+	var drains int
+	r := newRingBuffer(&testConsumer{
+		push: func(items []uint64) {
+			drains++
+		},
+		save: true,
+	}, 1)
+	for i := 0; i < 100; i++ {
+		r.Push(uint64(i))
+	}
+	require.Equal(t, 100, drains, "buffers shouldn't be dropped with BufferItems == 1")
+}
+
+func TestRingReset(t *testing.T) {
+	var drains int
+	r := newRingBuffer(&testConsumer{
+		push: func(items []uint64) {
+			drains++
+		},
+		save: false,
+	}, 4)
+	for i := 0; i < 100; i++ {
+		r.Push(uint64(i))
+	}
+	require.Equal(t, 0, drains, "testConsumer shouldn't be draining")
+}
