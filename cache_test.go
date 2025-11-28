@@ -152,3 +152,12 @@ func TestCacheGet(t *testing.T) {
 	require.False(t, ok)
 	require.Zero(t, val)
 }
+
+func newTestCache() (*Cache[int, int], error) {
+	return NewCache(&Config[int, int]{
+		NumCounters: 100,
+		MaxCost:     10,
+		BufferItems: 64,
+		Metrics:     true,
+	})
+}
