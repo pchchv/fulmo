@@ -448,6 +448,79 @@ func (c *Cache[K, V]) Get(key K) (V, bool) {
 	return value, ok
 }
 
+// Set attempts to add the key-value item to the cache. If it returns false,
+// then the Set was dropped and the key-value item isn't added to the cache.
+// If it returns true, there's still a chance it could be dropped by the policy if
+// its determined that the key-value item isn't worth keeping,
+// but otherwise the item will be added and other items will be evicted in order to make room.
+//
+// To dynamically evaluate the items cost using the Config.Coster function,
+// set the cost parameter to 0 and Coster will be
+// run when needed in order to find the items true cost.
+//
+// Set writes the value of type V as is.
+// If type V is a pointer type, it is ok to update the memory pointed to by the pointer.
+// Updating the pointer itself will not be reflected in the cache.
+// Be careful when using slice types as the value type V.
+// Calling `append` may update the underlined array pointer which will not be reflected in the cache.
+func (c *Cache[K, V]) Set(key K, value V, cost int64) bool {
+	return c.SetWithTTL(key, value, cost, 0*time.Second)
+}
+
+// SetWithTTL works like Set but adds a key-value pair to the cache that will expire
+// after the specified TTL (time to live) has passed.
+// A zero value means the value never expires, which is identical to calling Set.
+// A negative value is a no-op and the value is discarded.
+//
+// See Set for more information.
+func (c *Cache[K, V]) SetWithTTL(key K, value V, cost int64, ttl time.Duration) bool {
+	if c == nil || c.isClosed.Load() {
+		return false
+	}
+
+	var expiration time.Time
+	switch {
+	case ttl == 0:
+		// no expiration
+		break
+	case ttl < 0:
+		// treat this a no-op
+		return false
+	default:
+		expiration = time.Now().Add(ttl)
+	}
+
+	keyHash, conflictHash := c.keyToHash(key)
+	i := &Item[V]{
+		flag:       itemNew,
+		Key:        keyHash,
+		Conflict:   conflictHash,
+		Value:      value,
+		Cost:       cost,
+		Expiration: expiration,
+	}
+	// cost is eventually updated. The expiration must also be immediately updated
+	// to prevent items from being prematurely removed from the map
+	if prev, ok := c.storedItems.Update(i); ok {
+		c.onExit(prev)
+		i.flag = itemUpdate
+	}
+	// attempt to send item to cachePolicy
+	select {
+	case c.setBuf <- i:
+		return true
+	default:
+		if i.flag == itemUpdate {
+			// return true if this was an update operation since, already updated the storedItems
+			// for all the other operations (set/delete),
+			// return false which means the item was not inserted
+			return true
+		}
+		c.Metrics.add(dropSets, keyHash, 1)
+		return false
+	}
+}
+
 // processItems is ran by goroutines processing the Set buffer.
 func (c *Cache[K, V]) processItems() {
 	startTs := make(map[uint64]time.Time)
