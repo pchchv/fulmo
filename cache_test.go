@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pchchv/fulmo/helpers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -87,4 +88,67 @@ func TestMetricsString(t *testing.T) {
 	m = nil
 	require.Equal(t, 0, len(m.String()))
 	require.Equal(t, "unidentified", stringFor(doNotUse))
+}
+
+func TestNewCache(t *testing.T) {
+	_, err := NewCache(&Config[int, int]{
+		NumCounters: 0,
+	})
+	require.Error(t, err)
+
+	_, err = NewCache(&Config[int, int]{
+		NumCounters: 100,
+		MaxCost:     0,
+	})
+	require.Error(t, err)
+
+	_, err = NewCache(&Config[int, int]{
+		NumCounters: 100,
+		MaxCost:     10,
+		BufferItems: 0,
+	})
+	require.Error(t, err)
+
+	c, err := NewCache(&Config[int, int]{
+		NumCounters: 100,
+		MaxCost:     10,
+		BufferItems: 64,
+		Metrics:     true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, c)
+}
+
+func TestCacheGet(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters:        100,
+		MaxCost:            10,
+		BufferItems:        64,
+		IgnoreInternalCost: true,
+		Metrics:            true,
+	})
+	require.NoError(t, err)
+
+	key, conflict := helpers.KeyToHash(1)
+	i := Item[int]{
+		Key:      key,
+		Conflict: conflict,
+		Value:    1,
+	}
+	c.storedItems.Set(&i)
+	val, ok := c.Get(1)
+	require.True(t, ok)
+	require.NotNil(t, val)
+
+	val, ok = c.Get(2)
+	require.False(t, ok)
+	require.Zero(t, val)
+
+	// 0.5 and not 1.0 because we tried Getting each item twice
+	require.Equal(t, 0.5, c.Metrics.Ratio())
+
+	c = nil
+	val, ok = c.Get(0)
+	require.False(t, ok)
+	require.Zero(t, val)
 }
