@@ -769,6 +769,165 @@ func TestCacheDelWithTTL(t *testing.T) {
 	require.Zero(t, val)
 }
 
+func TestCacheKeyToHash(t *testing.T) {
+	keyToHashCount := 0
+	c, err := NewCache(&Config[int, int]{
+		NumCounters:        10,
+		MaxCost:            1000,
+		BufferItems:        64,
+		IgnoreInternalCost: true,
+		KeyToHash: func(key int) (uint64, uint64) {
+			keyToHashCount++
+			return helpers.KeyToHash(key)
+		},
+	})
+	require.NoError(t, err)
+	if c.Set(1, 1, 1) {
+		time.Sleep(wait)
+		val, ok := c.Get(1)
+		require.True(t, ok)
+		require.NotNil(t, val)
+		c.Del(1)
+	}
+	require.Equal(t, 3, keyToHashCount)
+}
+
+func TestUpdateMaxCost(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters: 10,
+		MaxCost:     10,
+		BufferItems: 64,
+	})
+	require.NoError(t, err)
+	require.Equal(t, int64(10), c.MaxCost())
+	require.True(t, c.Set(1, 1, 1))
+	time.Sleep(wait)
+	_, ok := c.Get(1)
+	// set is rejected because the cost of the entry is too high
+	// when accounting for the internal cost of storing the entry
+	require.False(t, ok)
+
+	// update the max cost of the cache and retry
+	c.UpdateMaxCost(1000)
+	require.Equal(t, int64(1000), c.MaxCost())
+	require.True(t, c.Set(1, 1, 1))
+	time.Sleep(wait)
+	val, ok := c.Get(1)
+	require.True(t, ok)
+	require.NotNil(t, val)
+	c.Del(1)
+}
+
+func TestRemainingCost(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters: 10,
+		MaxCost:     100,
+		BufferItems: 64,
+	})
+	require.NoError(t, err)
+	require.Equal(t, int64(100), c.RemainingCost())
+
+	// set allowed into cache
+	require.True(t, c.Set(1, 1, 1))
+	c.Wait()
+	_, ok := c.Get(1)
+	require.True(t, ok)
+
+	expectedUsed := 1 + itemSize
+	require.Equal(t, c.MaxCost()-expectedUsed, c.RemainingCost())
+
+	// set rejected due to exceeding capacity
+	require.True(t, c.Set(2, 2, 99))
+	c.Wait()
+	_, ok = c.Get(2)
+	require.False(t, ok)
+	// no change in RemainingCost
+	require.Equal(t, c.MaxCost()-expectedUsed, c.RemainingCost())
+
+	// remainingCost is still MaxCost() - Used after UpdateMaxCost()
+	c.UpdateMaxCost(1000)
+	require.Equal(t, int64(1000), c.MaxCost())
+	require.Equal(t, c.MaxCost()-expectedUsed, c.RemainingCost())
+	c.Del(1)
+}
+
+func TestNilCache(t *testing.T) {
+	var c *Cache[int, int]
+	val, ok := c.Get(1)
+	require.False(t, ok)
+	require.Zero(t, val)
+
+	require.False(t, c.Set(1, 1, 1))
+	c.Del(1)
+	c.Clear()
+	c.Close()
+}
+
+func TestCacheGetTTL(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters:        100,
+		MaxCost:            10,
+		IgnoreInternalCost: true,
+		BufferItems:        64,
+		Metrics:            true,
+	})
+	require.NoError(t, err)
+
+	// try expiration with valid ttl item
+	{
+		expiration := time.Second * 5
+		retrySet(t, c, 1, 1, 1, expiration)
+
+		val, ok := c.Get(1)
+		require.True(t, ok)
+		require.Equal(t, 1, val)
+
+		ttl, ok := c.GetTTL(1)
+		require.True(t, ok)
+		require.WithinDuration(t,
+			time.Now().Add(expiration), time.Now().Add(ttl), 1*time.Second)
+
+		c.Del(1)
+
+		ttl, ok = c.GetTTL(1)
+		require.False(t, ok)
+		require.Equal(t, ttl, time.Duration(0))
+	}
+	// try expiration with no ttl
+	{
+		retrySet(t, c, 2, 2, 1, time.Duration(0))
+
+		val, ok := c.Get(2)
+		require.True(t, ok)
+		require.Equal(t, 2, val)
+
+		ttl, ok := c.GetTTL(2)
+		require.True(t, ok)
+		require.Equal(t, ttl, time.Duration(0))
+	}
+	// try expiration with missing item
+	{
+		ttl, ok := c.GetTTL(3)
+		require.False(t, ok)
+		require.Equal(t, ttl, time.Duration(0))
+	}
+	// try expiration with expired item
+	{
+		expiration := time.Second
+		retrySet(t, c, 3, 3, 1, expiration)
+
+		val, ok := c.Get(3)
+		require.True(t, ok)
+		require.Equal(t, 3, val)
+
+		time.Sleep(time.Second)
+
+		ttl, ok := c.GetTTL(3)
+		require.False(t, ok)
+		require.Equal(t, ttl, time.Duration(0))
+	}
+}
+
 func init() {
 	// Set bucketSizeSecs to 1 to avoid waiting too much during the tests.
 	bucketDurationSecs = 1
