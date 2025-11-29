@@ -104,6 +104,29 @@ func StatsPrint() {
 	C.free(unsafe.Pointer(opts))
 }
 
+// ReadMemStats populates stats with JE Malloc statistics.
+func ReadMemStats(stats *MemStats) {
+	if stats == nil {
+		return
+	}
+	// Call an epoch mallclt to refresh the stats data as mentioned in the docs.
+	// http://jemalloc.net/jemalloc.3.html#epoch
+	// Note: This epoch mallctl is as expensive as a malloc call. It takes up the
+	// malloc_mutex_lock.
+	epoch := 1
+	sz := unsafe.Sizeof(&epoch)
+	C.je_mallctl(
+		(C.CString)("epoch"),
+		unsafe.Pointer(&epoch),
+		(*C.size_t)(unsafe.Pointer(&sz)),
+		unsafe.Pointer(&epoch),
+		(C.size_t)(unsafe.Sizeof(epoch)))
+	stats.Allocated = fetchStat("stats.allocated")
+	stats.Active = fetchStat("stats.active")
+	stats.Resident = fetchStat("stats.resident")
+	stats.Retained = fetchStat("stats.retained")
+}
+
 // By initializing dallocs, it,s possible to begin tracking memory allocation and deallocation through helpers.Calloc.
 func init() {
 	dallocs = make(map[unsafe.Pointer]*dalloc)
