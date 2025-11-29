@@ -726,6 +726,49 @@ func TestCacheProcessItems(t *testing.T) {
 	c.setBuf <- &Item[int]{flag: itemNew}
 }
 
+func TestCacheDel(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters: 100,
+		MaxCost:     10,
+		BufferItems: 64,
+	})
+	require.NoError(t, err)
+
+	c.Set(1, 1, 1)
+	c.Del(1)
+	// The deletes and sets are pushed through the setbuf.
+	// It might be possible that the delete is not processed before the following get is called.
+	// So wait for a millisecond for things to be processed.
+	time.Sleep(time.Millisecond)
+	val, ok := c.Get(1)
+	require.False(t, ok)
+	require.Zero(t, val)
+
+	c = nil
+	defer func() {
+		require.Nil(t, recover())
+	}()
+	c.Del(1)
+}
+
+func TestCacheDelWithTTL(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters:        100,
+		MaxCost:            10,
+		IgnoreInternalCost: true,
+		BufferItems:        64,
+	})
+	require.NoError(t, err)
+	retrySet(t, c, 3, 1, 1, 10*time.Second)
+	time.Sleep(1 * time.Second)
+	// delete the item
+	c.Del(3)
+	// ensure the key is deleted
+	val, ok := c.Get(3)
+	require.False(t, ok)
+	require.Zero(t, val)
+}
+
 func init() {
 	// Set bucketSizeSecs to 1 to avoid waiting too much during the tests.
 	bucketDurationSecs = 1
