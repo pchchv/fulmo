@@ -641,6 +641,28 @@ func (c *Cache[K, V]) RemainingCost() int64 {
 	return 0
 }
 
+// Del deletes the key-value item from the cache if it exists.
+func (c *Cache[K, V]) Del(key K) {
+	if c == nil || c.isClosed.Load() {
+		return
+	}
+
+	keyHash, conflictHash := c.keyToHash(key)
+	// delete immediately
+	_, prev := c.storedItems.Del(keyHash, conflictHash)
+	c.onExit(prev)
+	// If an item is set, it will be applied slightly later.
+	// Therefore, it's necessary to push the same item in
+	// `setBuf` with the deletion flag.
+	// This ensures that if a set is followed by a delete,
+	// it will be applied in the correct order.
+	c.setBuf <- &Item[V]{
+		flag:     itemDelete,
+		Key:      keyHash,
+		Conflict: conflictHash,
+	}
+}
+
 // processItems is ran by goroutines processing the Set buffer.
 func (c *Cache[K, V]) processItems() {
 	startTs := make(map[uint64]time.Time)
