@@ -98,7 +98,25 @@ func CallocNoRef(n int, tag string) []byte {
 	return Calloc(n, tag)
 }
 
+func StatsPrint() {
+	opts := C.CString("mdablxe")
+	C.je_malloc_stats_print(nil, nil, opts)
+	C.free(unsafe.Pointer(opts))
+}
+
 // By initializing dallocs, it,s possible to begin tracking memory allocation and deallocation through helpers.Calloc.
 func init() {
 	dallocs = make(map[unsafe.Pointer]*dalloc)
+}
+
+// fetchStat is used to read a specific attribute from je malloc stats using mallctl.
+func fetchStat(s string) (out uint64) {
+	sz := unsafe.Sizeof(&out)
+	C.je_mallctl(
+		(C.CString)(s),                   // Query: eg: stats.allocated, stats.resident, etc.
+		unsafe.Pointer(&out),             // Variable to store the output.
+		(*C.size_t)(unsafe.Pointer(&sz)), // Size of the output variable.
+		nil,                              // Input variable used to set a value.
+		0)                                // Size of the input variable.
+	return
 }
