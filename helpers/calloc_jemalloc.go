@@ -10,9 +10,13 @@ package helpers
 */
 import "C"
 import (
+	"bytes"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"unsafe"
+
+	"github.com/dustin/go-humanize"
 )
 
 var (
@@ -125,6 +129,31 @@ func ReadMemStats(stats *MemStats) {
 	stats.Active = fetchStat("stats.active")
 	stats.Resident = fetchStat("stats.resident")
 	stats.Retained = fetchStat("stats.retained")
+}
+
+func Leaks() string {
+	if dallocs == nil {
+		return "Leak detection disabled. Enable with 'leak' build flag."
+	}
+
+	dallocsMu.Lock()
+	defer dallocsMu.Unlock()
+	if len(dallocs) == 0 {
+		return "NO leaks found."
+	}
+
+	m := make(map[string]int)
+	for _, da := range dallocs {
+		m[da.t] += da.sz
+	}
+
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "Allocations:\n")
+	for f, sz := range m {
+		fmt.Fprintf(&buf, "%s at file: %s\n", humanize.IBytes(uint64(sz)), f)
+	}
+
+	return buf.String()
 }
 
 // By initializing dallocs, it,s possible to begin tracking memory allocation and deallocation through helpers.Calloc.
