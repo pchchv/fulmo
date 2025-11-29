@@ -56,6 +56,48 @@ func Free(b []byte) {
 	}
 }
 
+func Calloc(n int, tag string) []byte {
+	if n == 0 {
+		return make([]byte, 0)
+	}
+	//   Is needed to be conscious of the Cgo pointer passing rules:
+	//
+	//   https://golang.org/cmd/cgo/#hdr-Passing_pointers
+	//
+	//   ...
+	//   Note: the current implementation has a bug. While Go code is permitted
+	//   to write nil or a C pointer (but not a Go pointer) to C memory, the
+	//   current implementation may sometimes cause a runtime error if the
+	//   contents of the C memory appear to be a Go pointer. Therefore, avoid
+	//   passing uninitialized C memory to Go code if the Go code is going to
+	//   store pointer values in it. Zero out the memory in C before passing it
+	//   to Go.
+
+	ptr := C.je_calloc(C.size_t(n), 1)
+	if ptr == nil {
+		// NB: throw is like panic, except it guarantees the process will be
+		// terminated. The call below is exactly what the Go runtime invokes when
+		// it cannot allocate memory.
+		throw("out of memory")
+	}
+
+	uptr := unsafe.Pointer(ptr)
+	dallocsMu.Lock()
+	dallocs[uptr] = &dalloc{
+		t:  tag,
+		sz: n,
+	}
+	dallocsMu.Unlock()
+	atomic.AddInt64(&numBytes, int64(n))
+	// interpret the C pointer as a pointer to a Go array, then slice
+	return (*[MaxArrayLen]byte)(uptr)[:n:n]
+}
+
+// CallocNoRef does the exact same thing as Calloc with jemalloc enabled.
+func CallocNoRef(n int, tag string) []byte {
+	return Calloc(n, tag)
+}
+
 // By initializing dallocs, it,s possible to begin tracking memory allocation and deallocation through helpers.Calloc.
 func init() {
 	dallocs = make(map[unsafe.Pointer]*dalloc)
