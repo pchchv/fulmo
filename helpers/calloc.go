@@ -1,5 +1,9 @@
 package helpers
 
+import "sync/atomic"
+
+var numBytes int64
+
 // MemStats is used to fetch JE Malloc Stats. The stats are fetched from
 // the mallctl namespace http://jemalloc.net/jemalloc.3.html#mallctl_namespace.
 type MemStats struct {
@@ -29,4 +33,10 @@ type MemStats struct {
 	// e.g. stats.mapped (http://jemalloc.net/jemalloc.3.html#stats.mapped).
 	// http://jemalloc.net/jemalloc.3.html#stats.retained
 	Retained uint64
+}
+
+// NumAllocBytes returns the number of bytes allocated using calls to helpers.Calloc.
+// The allocations could be happening via either Go or jemalloc, depending upon the build flags.
+func NumAllocBytes() int64 {
+	return atomic.LoadInt64(&numBytes)
 }
