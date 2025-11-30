@@ -3,8 +3,9 @@ package sim
 import (
 	"bufio"
 	"io"
+	"math/rand"
+	"time"
 )
-
 
 // Parser is used as a parameter to NewReader,
 // allowing easy creation of Simulators from various trace file formats.
@@ -40,5 +41,15 @@ func NewReader(parser Parser, file io.Reader) Simulator {
 			i = 0
 		}
 		return s[i], err
+	}
+}
+
+// NewZipfian creates a Simulator returning numbers following a
+// Zipfian distribution infinitely.
+// Zipfian distributions are useful for simulating real workloads.
+func NewZipfian(s, v float64, n uint64) Simulator {
+	z := rand.NewZipf(rand.New(rand.NewSource(time.Now().UnixNano())), s, v, n)
+	return func() (uint64, error) {
+		return z.Uint64(), nil
 	}
 }
