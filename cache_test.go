@@ -3,6 +3,7 @@ package fulmo
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -928,8 +929,88 @@ func TestCacheGetTTL(t *testing.T) {
 	}
 }
 
+func TestCalloc(t *testing.T) {
+	maxCacheSize := 1 << 20
+	config := &Config[int, []byte]{
+		// use 5% of cache memory for storing counters
+		NumCounters: int64(float64(maxCacheSize) * 0.05 * 2),
+		MaxCost:     int64(float64(maxCacheSize) * 0.95),
+		BufferItems: 64,
+		Metrics:     true,
+		OnExit: func(val []byte) {
+			helpers.Free(val)
+		},
+	}
+	r, err := NewCache(config)
+	require.NoError(t, err)
+	defer r.Close()
+
+	var wg sync.WaitGroup
+	for i := 0; i < runtime.NumCPU(); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			rd := rand.New(rand.NewSource(time.Now().UnixNano()))
+			for i := 0; i < 10000; i++ {
+				k := rd.Intn(10000)
+				v := helpers.Calloc(256, "test")
+				rd.Read(v)
+				if !r.Set(k, v, 256) {
+					helpers.Free(v)
+				}
+				if rd.Intn(10) == 0 {
+					r.Del(k)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	r.Clear()
+	require.Zero(t, helpers.NumAllocBytes())
+}
+
+func TestCallocTTL(t *testing.T) {
+	maxCacheSize := 1 << 20
+	config := &Config[int, []byte]{
+		// Use 5% of cache memory for storing counters.
+		NumCounters: int64(float64(maxCacheSize) * 0.05 * 2),
+		MaxCost:     int64(float64(maxCacheSize) * 0.95),
+		BufferItems: 64,
+		Metrics:     true,
+		OnExit: func(val []byte) {
+			helpers.Free(val)
+		},
+	}
+	r, err := NewCache(config)
+	require.NoError(t, err)
+	defer r.Close()
+
+	var wg sync.WaitGroup
+	for i := 0; i < runtime.NumCPU(); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			rd := rand.New(rand.NewSource(time.Now().UnixNano()))
+			for i := 0; i < 10000; i++ {
+				k := rd.Intn(10000)
+				v := helpers.Calloc(256, "test")
+				rd.Read(v)
+				if !r.SetWithTTL(k, v, 256, time.Second) {
+					helpers.Free(v)
+				}
+				if rd.Intn(10) == 0 {
+					r.Del(k)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	time.Sleep(5 * time.Second)
+	require.Zero(t, helpers.NumAllocBytes())
+}
+
+// Set bucketSizeSecs to 1 to avoid waiting too much during the tests.
 func init() {
-	// Set bucketSizeSecs to 1 to avoid waiting too much during the tests.
 	bucketDurationSecs = 1
 }
 
