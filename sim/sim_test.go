@@ -17,3 +17,12 @@ func TestZipfian(t *testing.T) {
 		t.Fatal("zipfian not skewed")
 	}
 }
+
+func TestUniform(t *testing.T) {
+	s := NewUniform(100)
+	for i := 0; i < 100; i++ {
+		if _, err := s(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
