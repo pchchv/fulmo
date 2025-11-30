@@ -53,3 +53,12 @@ func NewZipfian(s, v float64, n uint64) Simulator {
 		return z.Uint64(), nil
 	}
 }
+
+// NewUniform creates a Simulator returning
+// uniformly distributed random numbers [0, max) infinitely.
+func NewUniform(max uint64) Simulator {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return func() (uint64, error) {
+		return uint64(r.Int63n(int64(max))), nil
+	}
+}
