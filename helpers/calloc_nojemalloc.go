@@ -3,6 +3,8 @@
 
 package helpers
 
+import "fmt"
+
 // Provides versions of Calloc, CallocNoRef, etc when jemalloc is not available
 // (eg: build without jemalloc tag).
 
@@ -19,3 +21,11 @@ func CallocNoRef(n int, tag string) []byte {
 	// We do the add here just to stay compatible with a corresponding Free call.
 	return nil
 }
+
+func StatsPrint() {
+	fmt.Println("Using Go memory")
+}
+
+// ReadMemStats doesn't do anything since all the memory is
+// being managed by the Go runtime.
+func ReadMemStats(_ *MemStats) {}
