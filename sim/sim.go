@@ -2,6 +2,7 @@ package sim
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"math/rand"
 	"time"
@@ -61,4 +62,25 @@ func NewUniform(max uint64) Simulator {
 	return func() (uint64, error) {
 		return uint64(r.Int63n(int64(max))), nil
 	}
+}
+
+// Collection evaluates the Simulator size times and
+// saves each item to the returned slice.
+func Collection(simulator Simulator, size uint64) []uint64 {
+	collection := make([]uint64, size)
+	for i := range collection {
+		collection[i], _ = simulator()
+	}
+	return collection
+}
+
+// StringCollection evaluates the Simulator size times and
+// saves each item to the returned slice, after converting it to a string.
+func StringCollection(simulator Simulator, size uint64) []string {
+	collection := make([]string, size)
+	for i := range collection {
+		n, _ := simulator()
+		collection[i] = fmt.Sprintf("%d", n)
+	}
+	return collection
 }
