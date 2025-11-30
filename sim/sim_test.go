@@ -26,3 +26,19 @@ func TestUniform(t *testing.T) {
 		}
 	}
 }
+
+func TestCollection(t *testing.T) {
+	s := NewUniform(100)
+	c := Collection(s, 100)
+	if len(c) != 100 {
+		t.Fatal("collection not full")
+	}
+}
+
+func TestStringCollection(t *testing.T) {
+	s := NewUniform(100)
+	c := StringCollection(s, 100)
+	if len(c) != 100 {
+		t.Fatal("string collection not full")
+	}
+}
