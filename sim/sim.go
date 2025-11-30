@@ -15,3 +15,30 @@ type Parser func(string, error) ([]uint64, error)
 // (composed of other functions in this package, generated or parsed).
 // Simulators can be used to approximate access distributions.
 type Simulator func() (uint64, error)
+
+// NewReader creates a Simulator from two components:
+// the Parser, which is a filetype specific function for parsing lines,
+// and the file itself, which will be read from.
+//
+// When every line in the file has been read, ErrDone will be returned.
+// For some trace formats (LIRS) there is one item per line.
+// For others (ARC) there is a range of items on each line.
+// Thus, the true number of items in each file is hard to determine,
+// so it's up to the user to handle ErrDone accordingly.
+func NewReader(parser Parser, file io.Reader) Simulator {
+	var err error
+	i := -1
+	s := make([]uint64, 0)
+	b := bufio.NewReader(file)
+	return func() (uint64, error) {
+		// only parse a new line when we've run out of items
+		if i++; i == len(s) {
+			// parse sequence from line
+			if s, err = parser(b.ReadString('\n')); err != nil {
+				s = []uint64{0}
+			}
+			i = 0
+		}
+		return s[i], err
+	}
+}
