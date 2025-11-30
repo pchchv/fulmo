@@ -2,10 +2,20 @@ package sim
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
+	"strconv"
+	"strings"
 	"time"
+)
+
+var (
+	// ErrDone is returned when the underlying file has ran out of lines.
+	ErrDone = errors.New("no more values in the Simulator")
+	// ErrBadLine is returned when the trace file line is unrecognizable to the Parser.
+	ErrBadLine = errors.New("bad line for trace format")
 )
 
 // Parser is used as a parameter to NewReader,
@@ -83,4 +93,44 @@ func StringCollection(simulator Simulator, size uint64) []string {
 		collection[i] = fmt.Sprintf("%d", n)
 	}
 	return collection
+}
+
+// ParseARC takes a single line of input from an ARC trace file as
+// described in "ARC: a self-tuning,
+// low overhead replacement cache" by Nimrod Megiddo and Dharmendra S.
+// Modha [1] and returns a sequence of numbers generated from the line and any error.
+// For use with NewReader.
+func ParseARC(line string, e error) ([]uint64, error) {
+	if line == "" {
+		return nil, ErrDone
+	}
+
+	// example: "0 5 0 0\n"
+	//
+	// -  first block: starting number in sequence
+	// - second block: number of items in sequence
+	// -  third block: ignore
+	// - fourth block: global line number (not used)
+	cols := strings.Fields(line)
+	if len(cols) != 4 {
+		return nil, ErrBadLine
+	}
+
+	start, err := strconv.ParseUint(cols[0], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := strconv.ParseUint(cols[1], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	// populate sequence from start to start + count
+	seq := make([]uint64, count)
+	for i := range seq {
+		seq[i] = start + uint64(i)
+	}
+
+	return seq, nil
 }
