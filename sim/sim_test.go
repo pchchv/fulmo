@@ -1,6 +1,9 @@
 package sim
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 func TestZipfian(t *testing.T) {
 	s := NewZipfian(1.5, 1, 100)
@@ -40,5 +43,19 @@ func TestStringCollection(t *testing.T) {
 	c := StringCollection(s, 100)
 	if len(c) != 100 {
 		t.Fatal("string collection not full")
+	}
+}
+
+func TestParseARC(t *testing.T) {
+	s := NewReader(ParseARC, bytes.NewReader([]byte{
+		'1', '2', '7', ' ', '6', '4', ' ', '0', ' ', '0', '\r', '\n',
+		'1', '9', '1', ' ', '3', '6', ' ', '0', ' ', '0', '\r', '\n',
+	}))
+	for i := uint64(0); i < 100; i++ {
+		if v, err := s(); err != nil {
+			t.Fatal(err)
+		} else if v != 127+i {
+			t.Fatal("value mismatch")
+		}
 	}
 }
