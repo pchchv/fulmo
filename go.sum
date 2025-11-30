@@ -6,8 +6,8 @@ github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da h1:aIftn67I1fkbMa5
 github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
-github.com/pchchv/fulmo/helpers v0.0.0-20251123030320-6d745f5aa7ca h1:W56uenqKa0L9C1+USkZt/4gSxHb1ZZSGtkKtq+jW9yk=
-github.com/pchchv/fulmo/helpers v0.0.0-20251123030320-6d745f5aa7ca/go.mod h1:yunUCqjucNmIv/P+PHZHA2B2Wrw2yXZgKXQYHE6mfwM=
+github.com/pchchv/fulmo/helpers v0.0.0-20251129063930-9d932c34961c h1:WKcpp0v9rFcBZLbidWl2SVk4mhi9WmsMGjdqB5Ecis4=
+github.com/pchchv/fulmo/helpers v0.0.0-20251129063930-9d932c34961c/go.mod h1:FqzUkWb6zQ99RHIUPJgZ2MYb3jmHLf+rbwT/ImcznTs=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
