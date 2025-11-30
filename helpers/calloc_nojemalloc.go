@@ -29,3 +29,7 @@ func StatsPrint() {
 // ReadMemStats doesn't do anything since all the memory is
 // being managed by the Go runtime.
 func ReadMemStats(_ *MemStats) {}
+
+func Leaks() string {
+	return "Leaks: Using Go memory"
+}
