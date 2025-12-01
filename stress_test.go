@@ -49,3 +49,15 @@ func (h clairvoyantHeap) Less(i, j int) bool {
 func (h clairvoyantHeap) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 }
+
+func (h *clairvoyantHeap) Push(x interface{}) {
+	*h = append(*h, x.(*clairvoyantItem))
+}
+
+func (h *clairvoyantHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
