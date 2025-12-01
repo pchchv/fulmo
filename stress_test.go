@@ -37,3 +37,15 @@ type clairvoyantItem struct {
 }
 
 type clairvoyantHeap []*clairvoyantItem
+
+func (h clairvoyantHeap) Len() int {
+	return len(h)
+}
+
+func (h clairvoyantHeap) Less(i, j int) bool {
+	return h[i].hits < h[j].hits
+}
+
+func (h clairvoyantHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+}
