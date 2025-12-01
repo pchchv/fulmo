@@ -30,3 +30,8 @@ func (c *Clairvoyant) Get(key interface{}) (interface{}, bool) {
 	c.access = append(c.access, key.(uint64))
 	return nil, false
 }
+
+type clairvoyantItem struct {
+	key  uint64
+	hits uint64
+}
