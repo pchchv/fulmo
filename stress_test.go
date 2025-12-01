@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pchchv/fulmo/sim"
+	"github.com/pchchv/fulmo/helpers/sim"
 	"github.com/stretchr/testify/require"
 )
 
