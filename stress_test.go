@@ -35,3 +35,5 @@ type clairvoyantItem struct {
 	key  uint64
 	hits uint64
 }
+
+type clairvoyantHeap []*clairvoyantItem
