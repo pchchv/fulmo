@@ -2,6 +2,8 @@ package sim
 
 import (
 	"bytes"
+	"compress/gzip"
+	"os"
 	"testing"
 )
 
@@ -56,6 +58,40 @@ func TestParseARC(t *testing.T) {
 			t.Fatal(err)
 		} else if v != 127+i {
 			t.Fatal("value mismatch")
+		}
+	}
+}
+
+func TestParseLIRS(t *testing.T) {
+	s := NewReader(ParseLIRS, bytes.NewReader([]byte{
+		'0', '\n',
+		'1', '\r', '\n',
+		'2', '\r', '\n',
+	}))
+	for i := uint64(0); i < 3; i++ {
+		if v, err := s(); err != nil {
+			t.Fatal(err)
+		} else if v != i {
+			t.Fatal("value mismatch")
+		}
+	}
+}
+
+func TestReadLIRS(t *testing.T) {
+	f, err := os.Open("./gli.lirs.gz")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := NewReader(ParseLIRS, r)
+	for i := uint64(0); i < 100; i++ {
+		if _, err = s(); err != nil {
+			t.Fatal(err)
 		}
 	}
 }
