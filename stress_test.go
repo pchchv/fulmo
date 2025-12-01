@@ -1,5 +1,7 @@
 package fulmo
 
+import "container/heap"
+
 // Clairvoyant is a mock cache providin optimal hit ratios to the Fulmo.
 // It looks ahead and evicts the absolute least valuable item that
 // comes closest to the actual cache.
@@ -29,6 +31,29 @@ func (c *Clairvoyant) Get(key interface{}) (interface{}, bool) {
 	c.hits[key.(uint64)]++
 	c.access = append(c.access, key.(uint64))
 	return nil, false
+}
+
+func (c *Clairvoyant) Metrics() *Metrics {
+	stat := newMetrics()
+	data := &clairvoyantHeap{}
+	look := make(map[uint64]struct{}, c.capacity)
+	heap.Init(data)
+	for _, key := range c.access {
+		if _, has := look[key]; has {
+			stat.add(hit, 0, 1)
+			continue
+		}
+
+		if uint64(data.Len()) >= c.capacity {
+			victim := heap.Pop(data)
+			delete(look, victim.(*clairvoyantItem).key)
+		}
+
+		stat.add(miss, 0, 1)
+		look[key] = struct{}{}
+		heap.Push(data, &clairvoyantItem{key, c.hits[key]})
+	}
+	return stat
 }
 
 type clairvoyantItem struct {
