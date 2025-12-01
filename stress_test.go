@@ -16,3 +16,17 @@ func NewClairvoyant(capacity uint64) *Clairvoyant {
 		access:   make([]uint64, 0),
 	}
 }
+
+// Set isn't important because it is only called after a Get
+// (in the case of hit ratio benchmarks, at least).
+func (c *Clairvoyant) Set(key, value interface{}, cost int64) bool {
+	return false
+}
+
+// Get just records the cache access so that it can later take
+// this event into consideration when calculating the absolute least valuable item to evict.
+func (c *Clairvoyant) Get(key interface{}) (interface{}, bool) {
+	c.hits[key.(uint64)]++
+	c.access = append(c.access, key.(uint64))
+	return nil, false
+}
