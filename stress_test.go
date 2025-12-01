@@ -2,11 +2,79 @@ package fulmo
 
 import (
 	"container/heap"
+	"fmt"
+	"math/rand"
+	"runtime"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/pchchv/fulmo/sim"
 	"github.com/stretchr/testify/require"
 )
+
+func TestStressHitRatio(t *testing.T) {
+	key := sim.NewZipfian(1.0001, 1, 1000)
+	c, err := NewCache(&Config[uint64, uint64]{
+		NumCounters: 1000,
+		MaxCost:     100,
+		BufferItems: 64,
+		Metrics:     true,
+	})
+	require.NoError(t, err)
+
+	o := NewClairvoyant(100)
+	for i := 0; i < 10000; i++ {
+		k, err := key()
+		require.NoError(t, err)
+		if _, ok := o.Get(k); !ok {
+			o.Set(k, k, 1)
+		}
+
+		if _, ok := c.Get(k); !ok {
+			c.Set(k, k, 1)
+		}
+	}
+	t.Logf("actual: %.2f, optimal: %.2f", c.Metrics.Ratio(), o.Metrics().Ratio())
+}
+
+func TestStressSetGet(t *testing.T) {
+	c, err := NewCache(&Config[int, int]{
+		NumCounters:        1000,
+		MaxCost:            100,
+		IgnoreInternalCost: true,
+		BufferItems:        64,
+		Metrics:            true,
+	})
+	require.NoError(t, err)
+
+	for i := 0; i < 100; i++ {
+		c.Set(i, i, 1)
+	}
+
+	time.Sleep(wait)
+	wg := &sync.WaitGroup{}
+	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+		wg.Add(1)
+		go func() {
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			for a := 0; a < 1000; a++ {
+				k := r.Int() % 10
+				if val, ok := c.Get(k); !ok {
+					err = fmt.Errorf("expected %d but got nil", k)
+					break
+				} else if val != 0 && val != k {
+					err = fmt.Errorf("expected %d but got %d", k, val)
+					break
+				}
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	require.NoError(t, err)
+	require.Equal(t, 1.0, c.Metrics.Ratio())
+}
 
 // Clairvoyant is a mock cache providin optimal hit ratios to the Fulmo.
 // It looks ahead and evicts the absolute least valuable item that
@@ -91,29 +159,4 @@ func (h *clairvoyantHeap) Pop() interface{} {
 	x := old[n-1]
 	*h = old[0 : n-1]
 	return x
-}
-
-func TestStressHitRatio(t *testing.T) {
-	key := sim.NewZipfian(1.0001, 1, 1000)
-	c, err := NewCache(&Config[uint64, uint64]{
-		NumCounters: 1000,
-		MaxCost:     100,
-		BufferItems: 64,
-		Metrics:     true,
-	})
-	require.NoError(t, err)
-
-	o := NewClairvoyant(100)
-	for i := 0; i < 10000; i++ {
-		k, err := key()
-		require.NoError(t, err)
-		if _, ok := o.Get(k); !ok {
-			o.Set(k, k, 1)
-		}
-
-		if _, ok := c.Get(k); !ok {
-			c.Set(k, k, 1)
-		}
-	}
-	t.Logf("actual: %.2f, optimal: %.2f", c.Metrics.Ratio(), o.Metrics().Ratio())
 }
