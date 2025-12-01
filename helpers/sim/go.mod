@@ -1,3 +1,3 @@
-module github.com/pchchv/fulmo/sim
+module github.com/pchchv/fulmo/helpers/sim
 
 go 1.25.4
