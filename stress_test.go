@@ -1,6 +1,12 @@
 package fulmo
 
-import "container/heap"
+import (
+	"container/heap"
+	"testing"
+
+	"github.com/pchchv/fulmo/sim"
+	"github.com/stretchr/testify/require"
+)
 
 // Clairvoyant is a mock cache providin optimal hit ratios to the Fulmo.
 // It looks ahead and evicts the absolute least valuable item that
@@ -85,4 +91,29 @@ func (h *clairvoyantHeap) Pop() interface{} {
 	x := old[n-1]
 	*h = old[0 : n-1]
 	return x
+}
+
+func TestStressHitRatio(t *testing.T) {
+	key := sim.NewZipfian(1.0001, 1, 1000)
+	c, err := NewCache(&Config[uint64, uint64]{
+		NumCounters: 1000,
+		MaxCost:     100,
+		BufferItems: 64,
+		Metrics:     true,
+	})
+	require.NoError(t, err)
+
+	o := NewClairvoyant(100)
+	for i := 0; i < 10000; i++ {
+		k, err := key()
+		require.NoError(t, err)
+		if _, ok := o.Get(k); !ok {
+			o.Set(k, k, 1)
+		}
+
+		if _, ok := c.Get(k); !ok {
+			c.Set(k, k, 1)
+		}
+	}
+	t.Logf("actual: %.2f, optimal: %.2f", c.Metrics.Ratio(), o.Metrics().Ratio())
 }
