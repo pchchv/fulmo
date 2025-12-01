@@ -137,7 +137,7 @@ func ParseARC(line string, e error) ([]uint64, error) {
 
 // ParseLIRS takes a single line of input from a LIRS trace file as
 // described in multiple papers and returns a slice containing one number.
-func ParseLIRS(line string) ([]uint64, error) {
+func ParseLIRS(line string, e error) ([]uint64, error) {
 	line = strings.TrimSpace(line)
 	if line == "" {
 		return nil, ErrDone
