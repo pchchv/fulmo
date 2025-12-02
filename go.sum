@@ -6,10 +6,10 @@ github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da h1:aIftn67I1fkbMa5
 github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
-github.com/pchchv/fulmo/helpers v0.0.0-20251130083726-e92f04a9f6c2 h1:bAdQ0lB/KEbtpOgye297pmJFHW+Cf3f32G7j7rs/xSo=
-github.com/pchchv/fulmo/helpers v0.0.0-20251130083726-e92f04a9f6c2/go.mod h1:FqzUkWb6zQ99RHIUPJgZ2MYb3jmHLf+rbwT/ImcznTs=
-github.com/pchchv/fulmo/sim v0.0.0-20251201171401-31f13a324c9d h1:ABSmpJ/r+pf3FHSthpT9sKjKK5qA+T8MkPsPtspV1nY=
-github.com/pchchv/fulmo/sim v0.0.0-20251201171401-31f13a324c9d/go.mod h1:zvh65HUjxcchDPMqpcAtvMpGUDoNBVNtMVe38CasQsk=
+github.com/pchchv/fulmo/helpers v0.0.0-20251201172607-6586e451fd9b h1:JCK0itgZVKsfi6v6cP25SlCzm8QcuiUWtvVm92D7nz4=
+github.com/pchchv/fulmo/helpers v0.0.0-20251201172607-6586e451fd9b/go.mod h1:FqzUkWb6zQ99RHIUPJgZ2MYb3jmHLf+rbwT/ImcznTs=
+github.com/pchchv/fulmo/helpers/sim v0.0.0-20251201172607-6586e451fd9b h1:ptO+yNa09EF3/g3vgDfeSmW4ydN8sg+0Ukr3Cx2/bGo=
+github.com/pchchv/fulmo/helpers/sim v0.0.0-20251201172607-6586e451fd9b/go.mod h1:kwfcswEtSUR1GbZdOC7s2LcdcsCIeaYfSLf7USgzrrk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
