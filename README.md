@@ -2,6 +2,17 @@
 
 Fulmo is a fast, concurrent caching package built with performance and correctness in mind.
 
+## Features
+
+- **High Hit Ratios** - Fulmo's unique combination of admission/eviction policies creates its unique performance.
+  - **Eviction: SampledLFU** - on par with exact LRU and better performance on Search and Database traces.
+  - **Admission: TinyLFU** - extra performance with little memory overhead (12 bits per counter).
+- **Fast Throughput** - superior throughput results from the use of various contention management techniques.
+- **Cost-Based Eviction** - any new large item that is considered valuable can evict several smaller items (cost could be anything).
+- **Fully Concurrent** - it is possible to use any number of goroutines, with little throughput degradation.
+- **Metrics** - optional performance metrics for throughput, hit ratios, and other statistics.
+- **Simple API** - just figure out ideal `Config` values and it's off and running.
+
 ## Installing
 
 ```sh
