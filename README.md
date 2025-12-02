@@ -1,5 +1,7 @@
 # fulmo
 
+Fulmo is a fast, concurrent caching package built with performance and correctness in mind.
+
 ## Installing
 
 ```sh
