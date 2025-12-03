@@ -1,4 +1,4 @@
-# fulmo [![Godoc Reference](https://pkg.go.dev/badge/github.com/pchchv/filmo)](https://pkg.go.dev/github.com/pchchv/filmo) [![Go Report Card](https://goreportcard.com/badge/github.com/pchchv/filmo)](https://goreportcard.com/report/github.com/pchchv/filmo)
+# fulmo [![Godoc Reference](https://pkg.go.dev/badge/github.com/pchchv/fulmo)](https://pkg.go.dev/github.com/pchchv/fulmo) [![Go Report Card](https://goreportcard.com/badge/github.com/pchchv/fulmo)](https://goreportcard.com/report/github.com/pchchv/fulmo)
 
 Fulmo is a fast, concurrent caching package built with performance and correctness in mind.
 
